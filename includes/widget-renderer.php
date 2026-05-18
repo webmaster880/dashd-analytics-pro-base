@@ -401,7 +401,7 @@ function dashd_render_front_widget($atts) {
         <?php endif; ?>
         
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
-            <h3 class="uk-h4 uk-margin-remove"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>
+            <h3 class="uk-h4 uk-margin-remove dashd-widget-title" data-default-title="<?php echo esc_attr(__('Analytics Overview', 'dashd-analytics-pro')); ?>"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>
             <div class="uk-flex uk-flex-column dashd-controls-stack" style="align-items: flex-end; gap: 10px;">
                 <div class="uk-flex uk-flex-middle dashd-controls-desktop" style="gap:10px;<?php echo (!$show_view_toggle && !$show_scale_toggle) ? 'display:none;' : ''; ?>">
                     <div class="dashd-view-selector dashd-toggle-view" data-html2canvas-ignore="true" style="<?php echo !$show_view_toggle ? 'display:none;' : ''; ?>">
@@ -503,8 +503,9 @@ function dashd_render_front_widget($atts) {
             }
             root.dataset.dashdInited = '1';
 
-            const i18n = {
+        const i18n = {
             allCountries: "<?php echo esc_js(__('All Countries', 'dashd-analytics-pro')); ?>",
+            analyticsOverview: "<?php echo esc_js(__('Analytics Overview', 'dashd-analytics-pro')); ?>",
             indicator: "<?php echo esc_js(__('Indicator', 'dashd-analytics-pro')); ?>",
             trend: "<?php echo esc_js(__('Trend', 'dashd-analytics-pro')); ?>",
             total: "<?php echo esc_js(__('Total', 'dashd-analytics-pro')); ?>",
@@ -603,6 +604,28 @@ function dashd_render_front_widget($atts) {
         };
 
         const isSingleIndicatorYearMode = () => (viewMode === 'bar' && getConfiguredIndicatorCount() === 1);
+        const syncWidgetTitle = () => {
+            const titleEl = root.querySelector('.dashd-widget-title');
+            if (!titleEl) return;
+
+            let title = String(titleEl.dataset.defaultTitle || i18n.analyticsOverview || 'Analytics Overview');
+            if (getConfiguredIndicatorCount() === 1) {
+                let source = null;
+                if (trendData && trendData.indicators) {
+                    source = trendData.indicators;
+                } else if (rawData && rawData.indicators) {
+                    source = rawData.indicators;
+                }
+                if (source) {
+                    const indicatorNames = Object.keys(source).filter(Boolean);
+                    if (indicatorNames.length === 1) {
+                        title = indicatorNames[0];
+                    }
+                }
+            }
+
+            titleEl.textContent = title;
+        };
 
         const syncDesktopSelectors = () => {
             root.querySelectorAll('.dashd-toggle-view .dashd-selector-label').forEach((el) => {
@@ -1217,6 +1240,7 @@ function dashd_render_front_widget($atts) {
             syncDesktopSelectors();
             syncPeriodControlVisibility();
             syncMobileSelectors();
+            syncWidgetTitle();
             const cBox = root.querySelector('.dashd-country-btns'); let cList = [];
             if ((viewMode === 'line' || isSingleIndicatorYearMode()) && trendData && trendData.countries) {
                 cList = trendData.countries;
