@@ -890,8 +890,13 @@ function dashd_render_front_widget($atts) {
                     color: textColor,
                     plugins: {
                         legend: {
+                            position: 'bottom',
                             labels: {
                                 color: textColor,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 10,
+                                boxHeight: 10,
                                 generateLabels: function(chartInstance) {
                                     const baseGenerator = Chart.defaults.plugins.legend.labels.generateLabels;
                                     const items = typeof baseGenerator === 'function' ? baseGenerator(chartInstance) : [];
