@@ -54,9 +54,158 @@ if (!function_exists('dashd_resolve_upload_file_path')) {
     }
 }
 
+if (!function_exists('dashd_parse_indicator_specs')) {
+    /**
+     * Parse indicator list tokens.
+     * Supported token formats:
+     * - source_key:indicator_id
+     * - indicator_id
+     *
+     * @param mixed $raw
+     * @return array<int,array{source:string,id:int}>
+     */
+    function dashd_parse_indicator_specs($raw) {
+        $parts = [];
+        if (is_array($raw)) {
+            foreach ($raw as $item) {
+                $item = is_scalar($item) ? (string) $item : '';
+                if ($item === '') {
+                    continue;
+                }
+                foreach (explode(',', $item) as $chunk) {
+                    $parts[] = trim((string) $chunk);
+                }
+            }
+        } else {
+            $raw = is_scalar($raw) ? (string) $raw : '';
+            foreach (explode(',', $raw) as $chunk) {
+                $parts[] = trim((string) $chunk);
+            }
+        }
+
+        $specs = [];
+        $seen = [];
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+
+            $source = '';
+            $id = 0;
+            if (preg_match('/^([a-z0-9_\\-]+):(\\d+)$/i', $part, $m) === 1) {
+                $source_raw = (string) $m[1];
+                $source = function_exists('dashd_normalize_source_key')
+                    ? dashd_normalize_source_key($source_raw)
+                    : sanitize_key($source_raw);
+                $id = (int) $m[2];
+            } elseif (preg_match('/^\\d+$/', $part) === 1) {
+                $id = (int) $part;
+            }
+
+            if ($id <= 0) {
+                continue;
+            }
+
+            $dedupe = $source . ':' . $id;
+            if (isset($seen[$dedupe])) {
+                continue;
+            }
+            $seen[$dedupe] = true;
+            $specs[] = ['source' => $source, 'id' => $id];
+            if (count($specs) >= 40) {
+                break;
+            }
+        }
+
+        return $specs;
+    }
+}
+
+if (!function_exists('dashd_get_indicator_source_map')) {
+    /**
+     * Map indicator IDs to source keys using configured target_source or stored raw records.
+     *
+     * @param array<int,int> $indicator_ids
+     * @return array<int,string>
+     */
+    function dashd_get_indicator_source_map(array $indicator_ids) {
+        global $wpdb;
+
+        $result = [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $indicator_ids), static function($v) {
+            return $v > 0;
+        })));
+        if (empty($ids)) {
+            return $result;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+        $target_rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, target_source FROM {$wpdb->prefix}dashd_indicators WHERE id IN ($placeholders)",
+                ...$ids
+            )
+        );
+        if (is_array($target_rows)) {
+            foreach ($target_rows as $row) {
+                $id = (int) ($row->id ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+                $src_raw = (string) ($row->target_source ?? '');
+                $src = function_exists('dashd_normalize_source_key')
+                    ? dashd_normalize_source_key($src_raw)
+                    : sanitize_key($src_raw);
+                if ($src !== '' && $src !== 'all') {
+                    $result[$id] = $src;
+                }
+            }
+        }
+
+        $missing = [];
+        foreach ($ids as $id) {
+            if (!isset($result[$id])) {
+                $missing[] = $id;
+            }
+        }
+
+        if (!empty($missing)) {
+            $sub_placeholders = implode(',', array_fill(0, count($missing), '%d'));
+            $rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT indicator_id, MIN(source_key) AS source_key
+                     FROM {$wpdb->prefix}dashd_data_records
+                     WHERE indicator_id IN ($sub_placeholders)
+                     GROUP BY indicator_id",
+                    ...$missing
+                )
+            );
+            if (is_array($rows)) {
+                foreach ($rows as $row) {
+                    $id = (int) ($row->indicator_id ?? 0);
+                    if ($id <= 0) {
+                        continue;
+                    }
+                    $src_raw = (string) ($row->source_key ?? '');
+                    $src = function_exists('dashd_normalize_source_key')
+                        ? dashd_normalize_source_key($src_raw)
+                        : sanitize_key($src_raw);
+                    if ($src !== '') {
+                        $result[$id] = $src;
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+}
+
 function dashd_render_front_widget($atts) {
     $a = shortcode_atts([
-        'table'  => 'table1',
+        'table'  => '',
+        'indicators' => '',
         'mode'   => 'bar',
         'scale'  => 'linear',
         'colors' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B',
@@ -67,10 +216,47 @@ function dashd_render_front_widget($atts) {
 
     $default_colors = ['#E5D6FF', '#E3F263', '#336DFF', '#8b5cf6', '#58595B'];
 
-    $table = sanitize_key((string) $a['table']);
+    $table = function_exists('dashd_normalize_source_key')
+        ? dashd_normalize_source_key((string) $a['table'])
+        : sanitize_key((string) $a['table']);
+    $indicator_specs = dashd_parse_indicator_specs($a['indicators'] ?? '');
+    $indicator_ids = array_values(array_unique(array_map(static function($spec) {
+        return (int) ($spec['id'] ?? 0);
+    }, $indicator_specs)));
+    $indicator_source_map = dashd_get_indicator_source_map($indicator_ids);
+
+    if ($table === '' && !empty($indicator_specs)) {
+        $first_source = (string) ($indicator_specs[0]['source'] ?? '');
+        if ($first_source === '') {
+            $first_id = (int) ($indicator_specs[0]['id'] ?? 0);
+            $first_source = (string) ($indicator_source_map[$first_id] ?? '');
+        }
+        if ($first_source !== '') {
+            $table = $first_source;
+        }
+    }
     if ($table === '') {
         $table = 'table1';
     }
+
+    $active_indicator_ids = [];
+    foreach ($indicator_specs as $spec) {
+        $id = (int) ($spec['id'] ?? 0);
+        if ($id <= 0) {
+            continue;
+        }
+
+        $spec_source = (string) ($spec['source'] ?? '');
+        $mapped_source = (string) ($indicator_source_map[$id] ?? '');
+        if ($spec_source !== '' && $spec_source !== $table) {
+            continue;
+        }
+        if ($spec_source === '' && $mapped_source !== '' && $mapped_source !== $table) {
+            continue;
+        }
+        $active_indicator_ids[] = $id;
+    }
+    $active_indicator_ids = array_values(array_unique($active_indicator_ids));
 
     $mode = in_array((string) $a['mode'], ['bar', 'line', 'donut'], true) ? (string) $a['mode'] : 'bar';
     $scale = in_array((string) $a['scale'], ['linear', 'logarithmic'], true) ? (string) $a['scale'] : 'linear';
@@ -117,6 +303,7 @@ function dashd_render_front_widget($atts) {
 
     $js_config = [
         'key'       => $table,
+        'indicatorIds' => $active_indicator_ids,
         'lang'      => $lang,
         'colors'    => $colors,
         'weight'    => $weight,
@@ -150,7 +337,7 @@ function dashd_render_front_widget($atts) {
     ob_start();
     ?>
     <div id="<?php echo esc_attr($uid); ?>" class="dashd-widget-container uk-margin-large-bottom" 
-        data-key="<?php echo esc_attr($table); ?>" data-lang="<?php echo esc_attr($lang); ?>" style="background: #fff; padding: 25px; border-radius: 8px; position: relative;">
+        data-key="<?php echo esc_attr($table); ?>" data-indicators="<?php echo esc_attr(implode(',', $active_indicator_ids)); ?>" data-lang="<?php echo esc_attr($lang); ?>" style="background: #fff; padding: 25px; border-radius: 8px; position: relative;">
         
         <?php if ($gated === 'true'): ?>
         <div class="dashd-modal-overlay" id="gated-modal-<?php echo esc_attr($uid); ?>" data-html2canvas-ignore="true">
@@ -453,6 +640,9 @@ function dashd_render_front_widget($atts) {
             syncPeriodControlVisibility();
             
             let url = `${config.ajax}?action=get_dashd_modern_data&key=${config.key}&lang=${config.lang}`;
+            if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
+                url += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
+            }
             if (viewMode === 'line') {
                 url += '&all=true';
             } else {
@@ -1463,7 +1653,11 @@ function dashd_render_front_widget($atts) {
                 bindEvents();
 
                 try {
-                    const pRes = await fetch(`${config.ajax}?action=get_dashd_periods_split&key=${config.key}`);
+                    let periodsUrl = `${config.ajax}?action=get_dashd_periods_split&key=${config.key}`;
+                    if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
+                        periodsUrl += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
+                    }
+                    const pRes = await fetch(periodsUrl);
                     if (!pRes.ok) throw new Error(`HTTP Error: ${pRes.status}`);
                     
                     const pJson = await pRes.json();

@@ -10,6 +10,7 @@ add_action('init', function() {
         'render_callback' => 'dashd_render_front_widget',
         'attributes' => [
             'table'    => ['type' => 'string', 'default' => ''],
+            'indicators' => ['type' => 'array', 'default' => [], 'items' => ['type' => 'string']],
             'mode'     => ['type' => 'string', 'default' => 'bar'],
             'scale'    => ['type' => 'string', 'default' => 'linear'],
             'gated'    => ['type' => 'string', 'default' => 'false'],
@@ -29,5 +30,19 @@ add_action('enqueue_block_editor_assets', function() {
 
     global $wpdb;
     $sources = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings");
-    wp_localize_script('dashd-gutenberg-block', 'dashdBlocksInfo', ['sources' => $sources]);
+    $indicator_options = function_exists('dashd_integration_get_indicator_options')
+        ? dashd_integration_get_indicator_options()
+        : [];
+    $indicators = [];
+    foreach ($indicator_options as $token => $label) {
+        $indicators[] = [
+            'value' => (string) $token,
+            'label' => (string) $label,
+        ];
+    }
+
+    wp_localize_script('dashd-gutenberg-block', 'dashdBlocksInfo', [
+        'sources' => $sources,
+        'indicators' => $indicators,
+    ]);
 });

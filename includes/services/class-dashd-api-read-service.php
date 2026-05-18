@@ -32,6 +32,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $lang = in_array($lang_raw, ['en', 'uk', 'hy', 'ro', 'ka'], true) ? $lang_raw : 'en';
             $is_all = isset($query['all']) && $query['all'] === 'true';
             $fy = isset($query['year']) ? (int) $query['year'] : 0;
+            $indicator_ids = self::parse_indicator_ids($query['indicators'] ?? '');
 
             $fq_raw = strtoupper((string) ($query['q'] ?? ''));
             $fq = in_array($fq_raw, ['Q1', 'Q2', 'Q3', 'Q4'], true) ? $fq_raw : '';
@@ -43,6 +44,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'all' => $is_all ? 1 : 0,
                     'year' => $fy,
                     'q' => $fq,
+                    'indicators' => $indicator_ids,
                 ])
                 : '';
             if ($cache_key !== '') {
@@ -78,15 +80,18 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     ? dashd_api_limit_int(apply_filters('dashd_api_all_max_indicators', 500, $key), 500, 1, 5000)
                     : 500;
 
-                $periods = $wpdb->get_results($wpdb->prepare(
-                    "SELECT DISTINCT data_year, data_quarter
+                $periods_sql = "SELECT DISTINCT data_year, data_quarter
                      FROM {$wpdb->prefix}dashd_data_records
-                     WHERE source_key=%s
-                     ORDER BY data_year DESC, data_quarter DESC
-                     LIMIT %d",
-                    $key,
-                    $max_all_periods
-                ));
+                     WHERE source_key=%s";
+                $periods_args = [$key];
+                if (!empty($indicator_ids)) {
+                    $periods_in = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                    $periods_sql .= " AND indicator_id IN ($periods_in)";
+                    $periods_args = array_merge($periods_args, $indicator_ids);
+                }
+                $periods_sql .= " ORDER BY data_year DESC, data_quarter DESC LIMIT %d";
+                $periods_args[] = $max_all_periods;
+                $periods = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
                 if (is_array($periods) && count($periods) > 1) {
                     $periods = array_reverse($periods);
                 }
@@ -96,18 +101,21 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     $period_index_map[$period_label] = $idx;
                 }
 
-                $results = $wpdb->get_results($wpdb->prepare(
-                    "
+                $all_sql = "
                     SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val, r.data_year, r.data_quarter 
                     FROM {$wpdb->prefix}dashd_data_records r 
                     JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id 
                     JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
-                    WHERE r.source_key = %s
-                    ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC
-                    LIMIT %d",
-                    $key,
-                    $max_all_rows
-                ));
+                    WHERE r.source_key = %s";
+                $all_args = [$key];
+                if (!empty($indicator_ids)) {
+                    $in_all = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                    $all_sql .= " AND r.indicator_id IN ($in_all)";
+                    $all_args = array_merge($all_args, $indicator_ids);
+                }
+                $all_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+                $all_args[] = $max_all_rows;
+                $results = $wpdb->get_results($wpdb->prepare($all_sql, ...$all_args));
 
                 $data = ['periods' => $period_labels, 'countries' => [], 'indicators' => [], 'last_sync' => $formatted_sync];
                 $country_set = [];
@@ -154,10 +162,15 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             if (!$fy || empty($fq)) {
-                $last = $wpdb->get_row($wpdb->prepare(
-                    "SELECT data_year, data_quarter FROM {$wpdb->prefix}dashd_data_records WHERE source_key=%s ORDER BY data_year DESC, data_quarter DESC LIMIT 1",
-                    $key
-                ));
+                $last_sql = "SELECT data_year, data_quarter FROM {$wpdb->prefix}dashd_data_records WHERE source_key=%s";
+                $last_args = [$key];
+                if (!empty($indicator_ids)) {
+                    $in_last = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                    $last_sql .= " AND indicator_id IN ($in_last)";
+                    $last_args = array_merge($last_args, $indicator_ids);
+                }
+                $last_sql .= " ORDER BY data_year DESC, data_quarter DESC LIMIT 1";
+                $last = $wpdb->get_row($wpdb->prepare($last_sql, ...$last_args));
                 if ($last) {
                     $fy = (int) $last->data_year;
                     $fq = (string) $last->data_quarter;
@@ -174,36 +187,38 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_api_limit_int(apply_filters('dashd_api_period_max_indicators', 500, $key, $fy, $fq), 500, 1, 5000)
                 : 500;
 
-            $current = $wpdb->get_results($wpdb->prepare(
-                "
+            $current_sql = "
                 SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
-                WHERE r.source_key=%s AND r.data_year=%d AND r.data_quarter=%s
-                ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC
-                LIMIT %d",
-                $key,
-                $fy,
-                $fq,
-                $max_period_rows
-            ));
+                WHERE r.source_key=%s AND r.data_year=%d AND r.data_quarter=%s";
+            $current_args = [$key, $fy, $fq];
+            if (!empty($indicator_ids)) {
+                $in_current = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                $current_sql .= " AND r.indicator_id IN ($in_current)";
+                $current_args = array_merge($current_args, $indicator_ids);
+            }
+            $current_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            $current_args[] = $max_period_rows;
+            $current = $wpdb->get_results($wpdb->prepare($current_sql, ...$current_args));
 
             $prev_year = $fy - 1;
-            $previous = $wpdb->get_results($wpdb->prepare(
-                "
+            $previous_sql = "
                 SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
-                WHERE r.source_key=%s AND r.data_year=%d AND r.data_quarter=%s
-                ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC
-                LIMIT %d",
-                $key,
-                $prev_year,
-                $fq,
-                $max_period_rows
-            ));
+                WHERE r.source_key=%s AND r.data_year=%d AND r.data_quarter=%s";
+            $previous_args = [$key, $prev_year, $fq];
+            if (!empty($indicator_ids)) {
+                $in_previous = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                $previous_sql .= " AND r.indicator_id IN ($in_previous)";
+                $previous_args = array_merge($previous_args, $indicator_ids);
+            }
+            $previous_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            $previous_args[] = $max_period_rows;
+            $previous = $wpdb->get_results($wpdb->prepare($previous_sql, ...$previous_args));
 
             $country_set = [];
             $truncated = [
@@ -280,6 +295,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $key = function_exists('dashd_normalize_source_key')
                 ? dashd_normalize_source_key((string) ($query['key'] ?? 'table1'), 'table1')
                 : sanitize_key((string) ($query['key'] ?? 'table1'));
+            $indicator_ids = self::parse_indicator_ids($query['indicators'] ?? '');
             if ($key === '') {
                 $key = 'table1';
             }
@@ -288,7 +304,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             $cache_key = function_exists('dashd_api_public_cache_key')
-                ? dashd_api_public_cache_key('periods_split', ['key' => $key])
+                ? dashd_api_public_cache_key('periods_split', ['key' => $key, 'indicators' => $indicator_ids])
                 : '';
             if ($cache_key !== '') {
                 $cached_data = get_transient($cache_key);
@@ -300,15 +316,18 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $max_years = function_exists('dashd_api_limit_int')
                 ? dashd_api_limit_int(apply_filters('dashd_api_periods_max_years', 80, $key), 80, 4, 500)
                 : 80;
-            $years = $wpdb->get_col($wpdb->prepare(
-                "SELECT DISTINCT data_year
+            $years_sql = "SELECT DISTINCT data_year
                  FROM {$wpdb->prefix}dashd_data_records
-                 WHERE source_key = %s
-                 ORDER BY data_year DESC
-                 LIMIT %d",
-                $key,
-                $max_years
-            ));
+                 WHERE source_key = %s";
+            $years_args = [$key];
+            if (!empty($indicator_ids)) {
+                $in_years = implode(',', array_fill(0, count($indicator_ids), '%d'));
+                $years_sql .= " AND indicator_id IN ($in_years)";
+                $years_args = array_merge($years_args, $indicator_ids);
+            }
+            $years_sql .= " ORDER BY data_year DESC LIMIT %d";
+            $years_args[] = $max_years;
+            $years = $wpdb->get_col($wpdb->prepare($years_sql, ...$years_args));
             $quarters = ['Q4', 'Q3', 'Q2', 'Q1'];
             $data = ['years' => $years, 'quarters' => $quarters];
 
@@ -337,6 +356,42 @@ if (!class_exists('DashD_Api_Read_Service')) {
          */
         private static function error($code, $message, $status) {
             return new WP_Error((string) $code, (string) $message, ['status' => (int) $status]);
+        }
+
+        /**
+         * @param mixed $raw
+         * @return array<int,int>
+         */
+        private static function parse_indicator_ids($raw) {
+            $parts = [];
+            if (is_array($raw)) {
+                foreach ($raw as $item) {
+                    $parts[] = is_scalar($item) ? (string) $item : '';
+                }
+            } else {
+                $parts[] = is_scalar($raw) ? (string) $raw : '';
+            }
+
+            $ids = [];
+            foreach ($parts as $part) {
+                foreach (explode(',', $part) as $chunk) {
+                    $chunk = trim((string) $chunk);
+                    if ($chunk === '' || preg_match('/^\\d+$/', $chunk) !== 1) {
+                        continue;
+                    }
+                    $id = (int) $chunk;
+                    if ($id > 0) {
+                        $ids[$id] = $id;
+                    }
+                }
+            }
+
+            $ids = array_values($ids);
+            if (count($ids) > 40) {
+                $ids = array_slice($ids, 0, 40);
+            }
+
+            return $ids;
         }
     }
 }

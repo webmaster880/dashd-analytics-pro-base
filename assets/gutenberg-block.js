@@ -19,19 +19,28 @@
                 label: `${s.source_label} (${s.source_key})`,
                 value: s.source_key
             }));
+            const indicatorOptions = Array.isArray(dashdBlocksInfo.indicators) ? dashdBlocksInfo.indicators : [];
 
             if (!attributes.table && sourceOptions.length > 0) {
                 setAttributes({ table: sourceOptions[0].value });
+            }
+            if ((!Array.isArray(attributes.indicators) || attributes.indicators.length === 0) && indicatorOptions.length > 0) {
+                setAttributes({ indicators: [indicatorOptions[0].value] });
             }
 
             return el('div', null,
                 el(InspectorControls, null,
                     el(PanelBody, { title: 'Dashboard Settings', initialOpen: true },
                         el(SelectControl, {
-                            label: 'Data Source',
-                            value: attributes.table,
-                            options: sourceOptions,
-                            onChange: (val) => setAttributes({ table: val })
+                            label: 'Indicators (Data Source)',
+                            multiple: true,
+                            value: Array.isArray(attributes.indicators) ? attributes.indicators : [],
+                            options: indicatorOptions,
+                            help: 'Select one or more indicators for this chart.',
+                            onChange: (val) => {
+                                const next = Array.isArray(val) ? val : (val ? [val] : []);
+                                setAttributes({ indicators: next });
+                            }
                         }),
                         el(SelectControl, {
                             label: 'Default Mode',

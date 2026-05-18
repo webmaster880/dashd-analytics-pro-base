@@ -149,6 +149,28 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $props = is_array($props) ? $props : [];
 
         $table = dashd_yootheme_sanitize_key($props['table'] ?? 'table1', 'table1');
+        $indicator_tokens = [];
+        $raw_indicators = $props['indicators'] ?? [];
+        if (!is_array($raw_indicators)) {
+            $raw_indicators = [$raw_indicators];
+        }
+        foreach ($raw_indicators as $raw_indicator) {
+            $raw_indicator = is_scalar($raw_indicator) ? (string) $raw_indicator : '';
+            foreach (preg_split('/\\s*,\\s*/', $raw_indicator, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+                $token = trim((string) $token);
+                if ($token === '') {
+                    continue;
+                }
+                if (preg_match('/^[a-z0-9_\\-]+:\\d+$/i', $token) !== 1 && preg_match('/^\\d+$/', $token) !== 1) {
+                    continue;
+                }
+                $indicator_tokens[$token] = $token;
+                if (count($indicator_tokens) >= 40) {
+                    break 2;
+                }
+            }
+        }
+        $indicators = implode(',', array_values($indicator_tokens));
         $mode = dashd_yootheme_normalize_mode($props['mode'] ?? 'bar');
         $scale = dashd_yootheme_normalize_scale($props['scale'] ?? 'linear');
         $gated = dashd_yootheme_normalize_gated($props['gated'] ?? false);
@@ -162,6 +184,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
 
         return [
             'table' => $table,
+            'indicators' => $indicators,
             'mode' => $mode,
             'scale' => $scale,
             'gated' => $gated,
@@ -178,8 +201,9 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" mode="%s" scale="%s" gated="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
+            dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
             dashd_yootheme_escape_attr($normalized['scale'] ?? 'linear'),
             dashd_yootheme_escape_attr($normalized['gated'] ?? 'false'),

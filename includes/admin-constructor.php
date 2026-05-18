@@ -7,14 +7,14 @@
 if (!defined('ABSPATH')) exit;
 
 function dashd_admin_constructor_page() {
-    global $wpdb;
-    
     // Подключаем локальный Chart.js для превью в конструкторе
     if (!wp_script_is('dashd-chart-js', 'enqueued')) {
         wp_enqueue_script('dashd-chart-js');
     }
 
-    $sources = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}dashd_settings");
+    $indicator_options = function_exists('dashd_integration_get_indicator_options')
+        ? dashd_integration_get_indicator_options()
+        : [];
     
     $palettes = [
         'blue'    => ['label' => __('Professional Blue', 'dashd-analytics-pro'), 'colors' => ['#1e87f0','#3e95cd','#7ebae6','#a5d2f3','#58595B']],
@@ -32,10 +32,21 @@ function dashd_admin_constructor_page() {
                 <h3 style="margin-top:0;"><?php esc_html_e('Widget Settings', 'dashd-analytics-pro'); ?></h3>
                 
                 <div class="uk-margin" style="margin-bottom: 15px;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Data Source:', 'dashd-analytics-pro'); ?></label>
-                    <select id="c_table" class="uk-select" style="width: 100%;">
-                        <?php foreach($sources as $s) echo "<option value='".esc_attr($s->source_key)."'>".esc_html($s->source_label)."</option>"; ?>
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Indicators (Data Source):', 'dashd-analytics-pro'); ?></label>
+                    <select id="c_indicators" class="uk-select" style="width: 100%; min-height: 190px;" multiple size="8">
+                        <?php if (!empty($indicator_options)): ?>
+                            <?php $opt_index = 0; foreach ($indicator_options as $indicator_token => $indicator_label): ?>
+                                <option value="<?php echo esc_attr((string) $indicator_token); ?>" <?php selected($opt_index < 3, true); ?>>
+                                    <?php echo esc_html((string) $indicator_label); ?>
+                                </option>
+                            <?php $opt_index++; endforeach; ?>
+                        <?php else: ?>
+                            <option value="" disabled><?php esc_html_e('No indicators available yet', 'dashd-analytics-pro'); ?></option>
+                        <?php endif; ?>
                     </select>
+                    <p style="font-size: 11px; color: #646970; margin-top: 5px;">
+                        <?php esc_html_e('Hold Cmd/Ctrl to select multiple indicators for one chart.', 'dashd-analytics-pro'); ?>
+                    </p>
                 </div>
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
@@ -119,14 +130,23 @@ function dashd_admin_constructor_page() {
             upSC();
         }
 
+        function getIndicatorsString() {
+            const el = document.getElementById('c_indicators');
+            if (!el) return '';
+            return Array.from(el.selectedOptions || [])
+                .map((opt) => String(opt.value || '').trim())
+                .filter(Boolean)
+                .join(',');
+        }
+
         function upSC() { 
-            const table = document.getElementById('c_table').value;
+            const indicators = getIndicatorsString();
             const mode = document.getElementById('c_mode').value;
             const scale = document.getElementById('c_scale').value;
             const gated = document.getElementById('c_gated').value;
             const colors = getColorsString();
             
-            let shortcode = `[dashd_widget table="${table}" mode="${mode}" scale="${scale}" colors="${colors}"`;
+            let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
             shortcode += `]`;
             
@@ -170,7 +190,11 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_table', 'c_mode', 'c_scale', 'c_gated'].forEach(id => { document.getElementById(id).onchange = upSC; });
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.onchange = upSC;
+        });
         for(let i=1; i<=5; i++) { document.getElementById('clr_'+i).oninput = upSC; }
 
         window.addEventListener('load', upSC);

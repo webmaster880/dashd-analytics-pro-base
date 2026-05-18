@@ -101,17 +101,30 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 $opts = function_exists('dashd_integration_get_source_options')
                     ? dashd_integration_get_source_options()
                     : ['table1' => 'Default Table (table1)'];
+                $indicator_opts = function_exists('dashd_integration_get_indicator_options')
+                    ? dashd_integration_get_indicator_options()
+                    : [];
 
                 $this->start_controls_section('content_section', [
                     'label' => __('Dashboard Settings', 'dashd-analytics-pro'),
                     'tab' => \Elementor\Controls_Manager::TAB_CONTENT,
                 ]);
 
+                $this->add_control('indicators', [
+                    'label' => __('Indicators (Data Source)', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SELECT2,
+                    'multiple' => true,
+                    'options' => $indicator_opts,
+                    'label_block' => true,
+                    'description' => __('Select one or more indicators. Source is resolved from indicator tokens.', 'dashd-analytics-pro'),
+                ]);
+
                 $this->add_control('table', [
-                    'label' => __('Data Source', 'dashd-analytics-pro'),
+                    'label' => __('Legacy Source (fallback)', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::SELECT,
                     'options' => $opts,
                     'default' => !empty($opts) ? array_key_first($opts) : 'table1',
+                    'separator' => 'before',
                 ]);
 
                 $this->add_control('mode', [
@@ -154,6 +167,26 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 if ($table === '') {
                     $table = 'table1';
                 }
+                $indicator_tokens = [];
+                $indicator_setting = $settings['indicators'] ?? [];
+                if (is_array($indicator_setting)) {
+                    foreach ($indicator_setting as $token) {
+                        $token = is_scalar($token) ? trim((string) $token) : '';
+                        if ($token === '') {
+                            continue;
+                        }
+                        if (preg_match('/^[a-z0-9_\\-]+:\\d+$/i', $token) === 1 || preg_match('/^\\d+$/', $token) === 1) {
+                            $indicator_tokens[] = $token;
+                        }
+                    }
+                } elseif (is_scalar($indicator_setting)) {
+                    $raw = trim((string) $indicator_setting);
+                    if ($raw !== '') {
+                        $indicator_tokens[] = $raw;
+                    }
+                }
+                $indicator_tokens = array_values(array_unique($indicator_tokens));
+                $indicators_csv = implode(',', $indicator_tokens);
 
                 $mode = strtolower(trim((string) ($settings['mode'] ?? 'bar')));
                 if (!in_array($mode, ['bar', 'line', 'donut'], true)) {
@@ -171,14 +204,19 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 if ($colors === '') {
                     $colors = '#E5D6FF, #E3F263, #336DFF, #8B5CF6, #58595B';
                 }
-                echo do_shortcode(sprintf(
-                    '[dashd_widget table="%s" mode="%s" scale="%s" gated="%s" colors="%s"]',
+                $shortcode = '[dashd_widget ';
+                if ($indicators_csv !== '') {
+                    $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
+                }
+                $shortcode .= sprintf(
+                    'table="%s" mode="%s" scale="%s" gated="%s" colors="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
                     esc_attr($gated),
                     esc_attr($colors)
-                ));
+                );
+                echo do_shortcode($shortcode);
             }
         }
     }

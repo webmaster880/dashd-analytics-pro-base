@@ -15,23 +15,33 @@ if (\function_exists('dashd_integration_get_source_options')) {
         $key = \function_exists('dashd_normalize_source_key')
             ? \dashd_normalize_source_key((string) $source_key)
             : \sanitize_key((string) $source_key);
-
         if ($key === '') {
             continue;
         }
-
         $label = \sanitize_text_field((string) $source_label);
         if ($label === '') {
             $label = $key;
         }
-
-        // YOOtheme select expects [Label => Value].
         $table_options[$label] = $key;
     }
 }
-
 if (empty($table_options)) {
     $table_options['Default Table (table1)'] = 'table1';
+}
+
+$indicator_options = [];
+if (\function_exists('dashd_integration_get_indicator_options')) {
+    foreach (\dashd_integration_get_indicator_options() as $token => $label) {
+        $token = \sanitize_text_field((string) $token);
+        $label = \sanitize_text_field((string) $label);
+        if ($token === '' || $label === '') {
+            continue;
+        }
+        $indicator_options[$label] = $token;
+    }
+}
+if (empty($indicator_options)) {
+    $indicator_options['No indicators available'] = '';
 }
 
 $color_presets = [
@@ -44,8 +54,17 @@ $color_presets = [
 
 return [
     'fields' => [
+        'indicators' => [
+            'label' => 'Indicators (Data Source)',
+            'type' => 'select',
+            'options' => $indicator_options,
+            'attrs' => [
+                'multiple' => true,
+                'size' => 8,
+            ],
+        ],
         'table' => [
-            'label' => 'Data Source',
+            'label' => 'Legacy Source (fallback)',
             'type' => 'select',
             'options' => $table_options,
         ],
@@ -252,7 +271,7 @@ return [
                 [
                     'title' => 'Settings',
                     'fields' => [
-                        'table',
+                        'indicators',
                         'mode',
                         'scale',
                         'gated',

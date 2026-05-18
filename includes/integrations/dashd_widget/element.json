@@ -12,6 +12,7 @@
     },
     "defaults": {
         "table": "",
+        "indicators": [],
         "mode": "bar",
         "scale": "linear",
         "gated": false,
