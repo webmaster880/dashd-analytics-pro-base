@@ -339,6 +339,8 @@ function dashd_render_front_widget($atts) {
     $lang = in_array($lang, ['en', 'uk', 'hy', 'ro', 'ka'], true) ? $lang : 'en';
     $ajax_url = admin_url('admin-ajax.php');
 
+    $show_bar_controls_ui = is_admin();
+
     $js_config = [
         'key'       => $table,
         'indicatorIds' => $active_indicator_ids,
@@ -353,6 +355,7 @@ function dashd_render_front_widget($atts) {
         'showViewToggle' => $show_view_toggle,
         'showScaleToggle' => $show_scale_toggle,
         'showPeriods' => $show_periods,
+        'showBarControlsUI' => $show_bar_controls_ui,
         'barOrientation' => $bar_orientation,
         'barStacked' => $bar_stacked,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
@@ -424,11 +427,11 @@ function dashd_render_front_widget($atts) {
                         <div class="dashd-selector-label <?php echo $scale === 'linear' ? 'active' : ''; ?>" data-scale="linear"><?php esc_html_e('Lin', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $scale === 'logarithmic' ? 'active' : ''; ?>" data-scale="logarithmic"><?php esc_html_e('Log', 'dashd-analytics-pro'); ?></div>
                     </div>
-                    <div class="dashd-view-selector dashd-toggle-orientation" data-html2canvas-ignore="true">
+                    <div class="dashd-view-selector dashd-toggle-orientation" data-html2canvas-ignore="true" style="<?php echo $show_bar_controls_ui ? '' : 'display:none;'; ?>">
                         <div class="dashd-selector-label <?php echo $bar_orientation === 'horizontal' ? 'active' : ''; ?>" data-orientation="horizontal"><?php esc_html_e('Horizontal', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $bar_orientation === 'vertical' ? 'active' : ''; ?>" data-orientation="vertical"><?php esc_html_e('Vertical', 'dashd-analytics-pro'); ?></div>
                     </div>
-                    <div class="dashd-view-selector dashd-toggle-stacked" data-html2canvas-ignore="true">
+                    <div class="dashd-view-selector dashd-toggle-stacked" data-html2canvas-ignore="true" style="<?php echo $show_bar_controls_ui ? '' : 'display:none;'; ?>">
                         <div class="dashd-selector-label <?php echo $bar_stacked ? 'active' : ''; ?>" data-stacked="true"><?php esc_html_e('Stacked', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo !$bar_stacked ? 'active' : ''; ?>" data-stacked="false"><?php esc_html_e('Normal', 'dashd-analytics-pro'); ?></div>
                     </div>
@@ -449,14 +452,14 @@ function dashd_render_front_widget($atts) {
                             <option value="logarithmic" <?php selected($scale, 'logarithmic'); ?>><?php esc_html_e('Logarithmic', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </label>
-                    <label class="dashd-mobile-field dashd-mobile-field-orientation">
+                    <label class="dashd-mobile-field dashd-mobile-field-orientation" style="<?php echo $show_bar_controls_ui ? '' : 'display:none;'; ?>">
                         <span><?php esc_html_e('Bars', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-orientation">
                             <option value="horizontal" <?php selected($bar_orientation, 'horizontal'); ?>><?php esc_html_e('Horizontal', 'dashd-analytics-pro'); ?></option>
                             <option value="vertical" <?php selected($bar_orientation, 'vertical'); ?>><?php esc_html_e('Vertical', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </label>
-                    <label class="dashd-mobile-field dashd-mobile-field-stacked">
+                    <label class="dashd-mobile-field dashd-mobile-field-stacked" style="<?php echo $show_bar_controls_ui ? '' : 'display:none;'; ?>">
                         <span><?php esc_html_e('Bar Type', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-stacked">
                             <option value="true" <?php selected($bar_stacked, true); ?>><?php esc_html_e('Stacked', 'dashd-analytics-pro'); ?></option>
@@ -787,7 +790,7 @@ function dashd_render_front_widget($atts) {
                 controls.mobileFieldScale.style.display = Boolean(config.showScaleToggle) ? 'flex' : 'none';
             }
 
-            const showBarControls = viewMode === 'bar';
+            const showBarControls = Boolean(config.showBarControlsUI) && viewMode === 'bar';
             if (controls.desktopOrientationToggle) {
                 controls.desktopOrientationToggle.style.display = showBarControls ? '' : 'none';
             }
