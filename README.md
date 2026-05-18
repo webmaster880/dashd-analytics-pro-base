@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.6.9`
+- Stable version: `11.7.0`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -117,12 +117,13 @@ IndicatorID[:CountryID][:Offset]
 ## Shortcode
 
 ```text
-[dashd_widget table="my_source_key" mode="line" scale="linear" colors="#1e87f0,#3e95cd,#7ebae6" gated="true"]
+[dashd_widget indicators="table1:5,table1:7,table1:9" mode="line" scale="linear" colors="#1e87f0,#3e95cd,#7ebae6" gated="true"]
 ```
 
 Parameters:
 
-- `table` — source key (`dashd_settings.source_key`).
+- `indicators` — список индикаторов через запятую (формат `source_key:indicator_id`), можно выбрать несколько.
+- `table` — legacy fallback source key (используется для обратной совместимости).
 - `mode` — `bar | line | donut`.
 - `scale` — `linear | logarithmic`.
 - `colors` — HEX-палитра через запятую.
@@ -211,7 +212,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.6.9`
+Latest release: `11.7.0`
 ---
 
 ## Notes
