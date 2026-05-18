@@ -148,6 +148,27 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'default' => 'false',
                 ]);
 
+                $this->add_control('show_view_toggle', [
+                    'label' => __('Show Bar/Line/Donut Switch', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SWITCHER,
+                    'return_value' => 'true',
+                    'default' => 'true',
+                ]);
+
+                $this->add_control('show_scale_toggle', [
+                    'label' => __('Show Lin/Log Switch', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SWITCHER,
+                    'return_value' => 'true',
+                    'default' => 'true',
+                ]);
+
+                $this->add_control('show_periods', [
+                    'label' => __('Show Year/Quarter Controls', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SWITCHER,
+                    'return_value' => 'true',
+                    'default' => 'true',
+                ]);
+
                 $this->add_control('colors', [
                     'label' => __('Color Palette (HEX comma separated)', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::TEXT,
@@ -199,6 +220,9 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 }
 
                 $gated = (!empty($settings['gated']) && (string) $settings['gated'] === 'true') ? 'true' : 'false';
+                $show_view_toggle = (!empty($settings['show_view_toggle']) && (string) $settings['show_view_toggle'] === 'true') ? 'true' : 'false';
+                $show_scale_toggle = (!empty($settings['show_scale_toggle']) && (string) $settings['show_scale_toggle'] === 'true') ? 'true' : 'false';
+                $show_periods = (!empty($settings['show_periods']) && (string) $settings['show_periods'] === 'true') ? 'true' : 'false';
 
                 $colors = self::sanitize_palette((string) ($settings['colors'] ?? ''));
                 if ($colors === '') {
@@ -209,11 +233,14 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
                 $shortcode .= sprintf(
-                    'table="%s" mode="%s" scale="%s" gated="%s" colors="%s"]',
+                    'table="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" colors="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
                     esc_attr($gated),
+                    esc_attr($show_view_toggle),
+                    esc_attr($show_scale_toggle),
+                    esc_attr($show_periods),
                     esc_attr($colors)
                 );
                 echo do_shortcode($shortcode);

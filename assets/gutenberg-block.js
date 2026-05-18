@@ -66,6 +66,21 @@
                             checked: attributes.gated === 'true',
                             onChange: (val) => setAttributes({ gated: val ? 'true' : 'false' })
                         }),
+                        el(ToggleControl, {
+                            label: 'Show Bar/Line/Donut Switch',
+                            checked: attributes.show_view_toggle !== 'false',
+                            onChange: (val) => setAttributes({ show_view_toggle: val ? 'true' : 'false' })
+                        }),
+                        el(ToggleControl, {
+                            label: 'Show Lin/Log Switch',
+                            checked: attributes.show_scale_toggle !== 'false',
+                            onChange: (val) => setAttributes({ show_scale_toggle: val ? 'true' : 'false' })
+                        }),
+                        el(ToggleControl, {
+                            label: 'Show Year/Quarter Controls',
+                            checked: attributes.show_periods !== 'false',
+                            onChange: (val) => setAttributes({ show_periods: val ? 'true' : 'false' })
+                        }),
                         el(TextControl, {
                             label: 'Colors (comma separated HEX)',
                             value: attributes.colors,

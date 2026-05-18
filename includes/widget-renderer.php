@@ -211,7 +211,10 @@ function dashd_render_front_widget($atts) {
         'colors' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B',
         'weight' => '3',
         'height' => '420px',
-        'gated'  => 'false'
+        'gated'  => 'false',
+        'show_view_toggle' => 'true',
+        'show_scale_toggle' => 'true',
+        'show_periods' => 'true',
     ], $atts);
 
     $default_colors = ['#E5D6FF', '#E3F263', '#336DFF', '#8b5cf6', '#58595B'];
@@ -270,6 +273,25 @@ function dashd_render_front_widget($atts) {
     $mode = in_array((string) $a['mode'], ['bar', 'line', 'donut'], true) ? (string) $a['mode'] : 'bar';
     $scale = in_array((string) $a['scale'], ['linear', 'logarithmic'], true) ? (string) $a['scale'] : 'linear';
     $gated = ((string) $a['gated'] === 'true') ? 'true' : 'false';
+    $bool_from_atts = static function($value, $default = true) {
+        if (is_bool($value)) {
+            return $value;
+        }
+        $raw = strtolower(trim((string) $value));
+        if ($raw === '') {
+            return (bool) $default;
+        }
+        if (in_array($raw, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($raw, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
+        return (bool) $default;
+    };
+    $show_view_toggle = $bool_from_atts($a['show_view_toggle'] ?? 'true', true);
+    $show_scale_toggle = $bool_from_atts($a['show_scale_toggle'] ?? 'true', true);
+    $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
 
     $weight = is_numeric($a['weight']) ? (float) $a['weight'] : 3.0;
     $weight = max(1, min(10, $weight));
@@ -321,6 +343,9 @@ function dashd_render_front_widget($atts) {
         'viewMode'  => $mode,
         'scaleMode' => $scale,
         'isGated'   => ($gated === 'true'),
+        'showViewToggle' => $show_view_toggle,
+        'showScaleToggle' => $show_scale_toggle,
+        'showPeriods' => $show_periods,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
     ];
 
@@ -378,19 +403,19 @@ function dashd_render_front_widget($atts) {
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
             <h3 class="uk-h4 uk-margin-remove"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>
             <div class="uk-flex uk-flex-column dashd-controls-stack" style="align-items: flex-end; gap: 10px;">
-                <div class="uk-flex uk-flex-middle dashd-controls-desktop" style="gap:10px;">
-                    <div class="dashd-view-selector dashd-toggle-view" data-html2canvas-ignore="true">
+                <div class="uk-flex uk-flex-middle dashd-controls-desktop" style="gap:10px;<?php echo (!$show_view_toggle && !$show_scale_toggle) ? 'display:none;' : ''; ?>">
+                    <div class="dashd-view-selector dashd-toggle-view" data-html2canvas-ignore="true" style="<?php echo !$show_view_toggle ? 'display:none;' : ''; ?>">
                         <div class="dashd-selector-label <?php echo $mode === 'bar' ? 'active' : ''; ?>" data-type="bar"><?php esc_html_e('Bar', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $mode === 'line' ? 'active' : ''; ?>" data-type="line"><?php esc_html_e('Line', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $mode === 'donut' ? 'active' : ''; ?>" data-type="donut"><?php esc_html_e('Donut', 'dashd-analytics-pro'); ?></div>
                     </div>
-                    <div class="dashd-view-selector dashd-toggle-scale" data-html2canvas-ignore="true">
+                    <div class="dashd-view-selector dashd-toggle-scale" data-html2canvas-ignore="true" style="<?php echo !$show_scale_toggle ? 'display:none;' : ''; ?>">
                         <div class="dashd-selector-label <?php echo $scale === 'linear' ? 'active' : ''; ?>" data-scale="linear"><?php esc_html_e('Lin', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $scale === 'logarithmic' ? 'active' : ''; ?>" data-scale="logarithmic"><?php esc_html_e('Log', 'dashd-analytics-pro'); ?></div>
                     </div>
                 </div>
-                <div class="dashd-mobile-controls" data-html2canvas-ignore="true">
-                    <label class="dashd-mobile-field">
+                <div class="dashd-mobile-controls" data-html2canvas-ignore="true" style="<?php echo (!$show_view_toggle && !$show_scale_toggle && !$show_periods) ? 'display:none;' : ''; ?>">
+                    <label class="dashd-mobile-field dashd-mobile-field-view" style="<?php echo !$show_view_toggle ? 'display:none;' : ''; ?>">
                         <span><?php esc_html_e('View', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-view">
                             <option value="bar" <?php selected($mode, 'bar'); ?>><?php esc_html_e('Bar', 'dashd-analytics-pro'); ?></option>
@@ -398,23 +423,23 @@ function dashd_render_front_widget($atts) {
                             <option value="donut" <?php selected($mode, 'donut'); ?>><?php esc_html_e('Donut', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </label>
-                    <label class="dashd-mobile-field">
+                    <label class="dashd-mobile-field dashd-mobile-field-scale" style="<?php echo !$show_scale_toggle ? 'display:none;' : ''; ?>">
                         <span><?php esc_html_e('Scale', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-scale">
                             <option value="linear" <?php selected($scale, 'linear'); ?>><?php esc_html_e('Linear', 'dashd-analytics-pro'); ?></option>
                             <option value="logarithmic" <?php selected($scale, 'logarithmic'); ?>><?php esc_html_e('Logarithmic', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </label>
-                    <label class="dashd-mobile-field">
+                    <label class="dashd-mobile-field dashd-mobile-field-year" style="<?php echo !$show_periods ? 'display:none;' : ''; ?>">
                         <span><?php esc_html_e('Year', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-year"></select>
                     </label>
-                    <label class="dashd-mobile-field">
+                    <label class="dashd-mobile-field dashd-mobile-field-quarter" style="<?php echo !$show_periods ? 'display:none;' : ''; ?>">
                         <span><?php esc_html_e('Quarter', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-quarter"></select>
                     </label>
                 </div>
-                <div class="dashd-periods-wrap uk-flex dashd-period-controls" style="gap:10px;">
+                <div class="dashd-periods-wrap uk-flex dashd-period-controls" style="gap:10px;<?php echo !$show_periods ? 'display:none;' : ''; ?>">
                     <div class="dashd-year-btns uk-flex dashd-period-buttons" style="gap:5px;"></div>
                     <div class="dashd-q-btns uk-flex dashd-period-buttons" style="gap:5px;"></div>
                 </div>
@@ -504,10 +529,16 @@ function dashd_render_front_widget($atts) {
             periodsWrap: root.querySelector('.dashd-periods-wrap'),
             yearButtonsBox: root.querySelector('.dashd-year-btns'),
             quarterButtonsBox: root.querySelector('.dashd-q-btns'),
+            desktopViewToggle: root.querySelector('.dashd-toggle-view'),
+            desktopScaleToggle: root.querySelector('.dashd-toggle-scale'),
             mobileViewSelect: root.querySelector('.dashd-mobile-view'),
             mobileScaleSelect: root.querySelector('.dashd-mobile-scale'),
             mobileYearSelect: root.querySelector('.dashd-mobile-year'),
-            mobileQuarterSelect: root.querySelector('.dashd-mobile-quarter')
+            mobileQuarterSelect: root.querySelector('.dashd-mobile-quarter'),
+            mobileFieldView: root.querySelector('.dashd-mobile-field-view'),
+            mobileFieldScale: root.querySelector('.dashd-mobile-field-scale'),
+            mobileFieldYear: root.querySelector('.dashd-mobile-field-year'),
+            mobileFieldQuarter: root.querySelector('.dashd-mobile-field-quarter')
         };
 
         const loader = root.querySelector('.dashd-loader-overlay');
@@ -611,9 +642,9 @@ function dashd_render_front_widget($atts) {
         };
 
         const syncPeriodControlVisibility = () => {
-            const hidePeriods = (viewMode === 'line') || isSingleIndicatorYearMode();
-            const yearField = controls.mobileYearSelect ? controls.mobileYearSelect.closest('.dashd-mobile-field') : null;
-            const quarterField = controls.mobileQuarterSelect ? controls.mobileQuarterSelect.closest('.dashd-mobile-field') : null;
+            const hidePeriods = !Boolean(config.showPeriods) || (viewMode === 'line') || isSingleIndicatorYearMode();
+            const yearField = controls.mobileFieldYear;
+            const quarterField = controls.mobileFieldQuarter;
 
             if (controls.periodsWrap) {
                 controls.periodsWrap.style.display = hidePeriods ? 'none' : 'flex';
@@ -629,6 +660,19 @@ function dashd_render_front_widget($atts) {
             }
             if (controls.mobileQuarterSelect) {
                 controls.mobileQuarterSelect.disabled = hidePeriods || controls.mobileQuarterSelect.options.length === 0;
+            }
+
+            if (controls.desktopViewToggle) {
+                controls.desktopViewToggle.style.display = Boolean(config.showViewToggle) ? '' : 'none';
+            }
+            if (controls.desktopScaleToggle) {
+                controls.desktopScaleToggle.style.display = Boolean(config.showScaleToggle) ? '' : 'none';
+            }
+            if (controls.mobileFieldView) {
+                controls.mobileFieldView.style.display = Boolean(config.showViewToggle) ? 'flex' : 'none';
+            }
+            if (controls.mobileFieldScale) {
+                controls.mobileFieldScale.style.display = Boolean(config.showScaleToggle) ? 'flex' : 'none';
             }
         };
 
@@ -1569,7 +1613,8 @@ function dashd_render_front_widget($atts) {
                 let tempLinePdfTable = null;
                 const isLinePdfMode = viewMode === 'line';
                 
-                const viewScaleToggles = root.querySelector('.dashd-toggle-view').parentNode;
+                const viewToggleNode = root.querySelector('.dashd-toggle-view');
+                const viewScaleToggles = viewToggleNode ? viewToggleNode.parentNode : null;
                 const pWrap = root.querySelector('.dashd-periods-wrap');
                 const cBox = root.querySelector('.dashd-country-btns');
 

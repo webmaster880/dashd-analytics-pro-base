@@ -73,6 +73,23 @@ function dashd_admin_constructor_page() {
                     <p style="font-size: 11px; color: #646970; margin-top: 5px;"><?php esc_html_e('If enabled, users will be prompted to enter their email before downloading CSV or PDF reports.', 'dashd-analytics-pro'); ?></p>
                 </div>
 
+                <div class="uk-margin" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 8px;"><?php esc_html_e('Controls Visibility:', 'dashd-analytics-pro'); ?></label>
+                    <label style="display:block; margin-bottom:6px;">
+                        <input type="checkbox" id="c_show_view_toggle" checked>
+                        <?php esc_html_e('Show Bar / Line / Donut switch', 'dashd-analytics-pro'); ?>
+                    </label>
+                    <label style="display:block; margin-bottom:6px;">
+                        <input type="checkbox" id="c_show_scale_toggle" checked>
+                        <?php esc_html_e('Show Lin / Log switch', 'dashd-analytics-pro'); ?>
+                    </label>
+                    <label style="display:block; margin-bottom:0;">
+                        <input type="checkbox" id="c_show_periods" checked>
+                        <?php esc_html_e('Show Year / Quarter controls', 'dashd-analytics-pro'); ?>
+                    </label>
+                    <p style="font-size: 11px; color: #646970; margin-top: 5px;"><?php esc_html_e('When hidden, selected defaults still work in background.', 'dashd-analytics-pro'); ?></p>
+                </div>
+
                 <div class="uk-margin" style="margin-top:20px; padding:15px; background:#f6f7f7; border-radius:8px; border:1px solid #e5e5e5;">
                     <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Custom Color Palette:', 'dashd-analytics-pro'); ?></label>
                     
@@ -145,9 +162,15 @@ function dashd_admin_constructor_page() {
             const scale = document.getElementById('c_scale').value;
             const gated = document.getElementById('c_gated').value;
             const colors = getColorsString();
+            const showViewToggle = document.getElementById('c_show_view_toggle').checked ? 'true' : 'false';
+            const showScaleToggle = document.getElementById('c_show_scale_toggle').checked ? 'true' : 'false';
+            const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
             
             let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
+            shortcode += ` show_view_toggle="${showViewToggle}"`;
+            shortcode += ` show_scale_toggle="${showScaleToggle}"`;
+            shortcode += ` show_periods="${showPeriods}"`;
             shortcode += `]`;
             
             document.getElementById('res_sc').value = shortcode; 
@@ -190,7 +213,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;

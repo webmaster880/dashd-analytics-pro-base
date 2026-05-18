@@ -90,6 +90,24 @@ return [
             'type' => 'checkbox',
             'text' => 'Require Email',
         ],
+        'show_view_toggle' => [
+            'label' => 'Show View Switch',
+            'type' => 'checkbox',
+            'text' => 'Show Bar / Line / Donut',
+            'default' => true,
+        ],
+        'show_scale_toggle' => [
+            'label' => 'Show Scale Switch',
+            'type' => 'checkbox',
+            'text' => 'Show Lin / Log',
+            'default' => true,
+        ],
+        'show_periods' => [
+            'label' => 'Show Period Controls',
+            'type' => 'checkbox',
+            'text' => 'Show Year / Quarter',
+            'default' => true,
+        ],
         'colors' => [
             'label' => 'Color Palette',
             'type' => 'select',
@@ -275,6 +293,9 @@ return [
                         'mode',
                         'scale',
                         'gated',
+                        'show_view_toggle',
+                        'show_scale_toggle',
+                        'show_periods',
                         'colors',
                         [
                             'label' => 'Custom Color Palette',

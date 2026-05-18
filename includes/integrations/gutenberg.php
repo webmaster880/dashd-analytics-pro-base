@@ -14,6 +14,9 @@ add_action('init', function() {
             'mode'     => ['type' => 'string', 'default' => 'bar'],
             'scale'    => ['type' => 'string', 'default' => 'linear'],
             'gated'    => ['type' => 'string', 'default' => 'false'],
+            'show_view_toggle' => ['type' => 'string', 'default' => 'true'],
+            'show_scale_toggle' => ['type' => 'string', 'default' => 'true'],
+            'show_periods' => ['type' => 'string', 'default' => 'true'],
             'colors'   => ['type' => 'string', 'default' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B']
         ]
     ]);

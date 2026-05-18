@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.7
+ * Version: 11.7.8
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.7');
+define('DASHD_VERSION', '11.7.8');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));
@@ -643,6 +643,25 @@ add_action('wp_ajax_dashd_render_preview', function() {
     }
 
     $gated = ((string) ($parsed_atts['gated'] ?? 'false') === 'true') ? 'true' : 'false';
+    $bool_like = static function($value, $default = true) {
+        if (is_bool($value)) {
+            return $value;
+        }
+        $raw = strtolower(trim((string) $value));
+        if ($raw === '') {
+            return (bool) $default;
+        }
+        if (in_array($raw, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($raw, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
+        return (bool) $default;
+    };
+    $show_view_toggle = $bool_like($parsed_atts['show_view_toggle'] ?? 'true', true) ? 'true' : 'false';
+    $show_scale_toggle = $bool_like($parsed_atts['show_scale_toggle'] ?? 'true', true) ? 'true' : 'false';
+    $show_periods = $bool_like($parsed_atts['show_periods'] ?? 'true', true) ? 'true' : 'false';
 
     $safe_colors = [];
     $colors_raw = is_scalar($parsed_atts['colors'] ?? '') ? (string) $parsed_atts['colors'] : '';
@@ -661,6 +680,9 @@ add_action('wp_ajax_dashd_render_preview', function() {
         'mode'   => $mode,
         'scale'  => $scale,
         'gated'  => $gated,
+        'show_view_toggle' => $show_view_toggle,
+        'show_scale_toggle' => $show_scale_toggle,
+        'show_periods' => $show_periods,
         'colors' => implode(', ', $safe_colors),
     ];
 
