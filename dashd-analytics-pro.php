@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.3
+ * Version: 11.7.4
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.3');
+define('DASHD_VERSION', '11.7.4');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));
@@ -598,8 +598,36 @@ add_action('wp_ajax_dashd_render_preview', function() {
     }
 
     $table = function_exists('dashd_normalize_source_key')
-        ? dashd_normalize_source_key((string) ($parsed_atts['table'] ?? 'table1'), 'table1')
-        : sanitize_key((string) ($parsed_atts['table'] ?? 'table1'));
+        ? dashd_normalize_source_key((string) ($parsed_atts['table'] ?? ''))
+        : sanitize_key((string) ($parsed_atts['table'] ?? ''));
+    $indicator_specs = [];
+    $indicators_raw = is_scalar($parsed_atts['indicators'] ?? '') ? (string) $parsed_atts['indicators'] : '';
+    foreach (preg_split('/\s*,\s*/', $indicators_raw, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
+        $token = trim((string) $token);
+        if ($token === '') {
+            continue;
+        }
+        if (preg_match('/^[a-z0-9_\-]+:\d+$/i', $token) !== 1 && preg_match('/^\d+$/', $token) !== 1) {
+            continue;
+        }
+        $indicator_specs[$token] = $token;
+        if (count($indicator_specs) >= 40) {
+            break;
+        }
+    }
+    $safe_indicators = implode(',', array_values($indicator_specs));
+
+    if ($table === '' && !empty($indicator_specs)) {
+        $first = (string) reset($indicator_specs);
+        if (preg_match('/^([a-z0-9_\-]+):\d+$/i', $first, $m) === 1) {
+            $source_from_indicator = function_exists('dashd_normalize_source_key')
+                ? dashd_normalize_source_key((string) $m[1])
+                : sanitize_key((string) $m[1]);
+            if ($source_from_indicator !== '') {
+                $table = $source_from_indicator;
+            }
+        }
+    }
     if ($table === '') {
         $table = 'table1';
     }
@@ -629,6 +657,7 @@ add_action('wp_ajax_dashd_render_preview', function() {
 
     $preview_atts = [
         'table'  => $table,
+        'indicators' => $safe_indicators,
         'mode'   => $mode,
         'scale'  => $scale,
         'gated'  => $gated,

@@ -239,7 +239,7 @@ function dashd_render_front_widget($atts) {
         $table = 'table1';
     }
 
-    $active_indicator_ids = [];
+    $active_indicator_specs = [];
     foreach ($indicator_specs as $spec) {
         $id = (int) ($spec['id'] ?? 0);
         if ($id <= 0) {
@@ -248,15 +248,24 @@ function dashd_render_front_widget($atts) {
 
         $spec_source = (string) ($spec['source'] ?? '');
         $mapped_source = (string) ($indicator_source_map[$id] ?? '');
-        if ($spec_source !== '' && $spec_source !== $table) {
-            continue;
+        if ($spec_source === '' && $mapped_source !== '') {
+            $spec_source = $mapped_source;
         }
-        if ($spec_source === '' && $mapped_source !== '' && $mapped_source !== $table) {
-            continue;
+
+        $token = ($spec_source !== '' ? $spec_source . ':' : '') . $id;
+        if (!isset($active_indicator_specs[$token])) {
+            $active_indicator_specs[$token] = $token;
         }
-        $active_indicator_ids[] = $id;
     }
-    $active_indicator_ids = array_values(array_unique($active_indicator_ids));
+    $active_indicator_specs = array_values($active_indicator_specs);
+    $active_indicator_ids = array_values(array_unique(array_map(static function($token) {
+        $token = (string) $token;
+        if (strpos($token, ':') !== false) {
+            $parts = explode(':', $token);
+            return (int) end($parts);
+        }
+        return (int) $token;
+    }, $active_indicator_specs)));
 
     $mode = in_array((string) $a['mode'], ['bar', 'line', 'donut'], true) ? (string) $a['mode'] : 'bar';
     $scale = in_array((string) $a['scale'], ['linear', 'logarithmic'], true) ? (string) $a['scale'] : 'linear';
@@ -304,6 +313,7 @@ function dashd_render_front_widget($atts) {
     $js_config = [
         'key'       => $table,
         'indicatorIds' => $active_indicator_ids,
+        'indicatorSpecs' => $active_indicator_specs,
         'lang'      => $lang,
         'colors'    => $colors,
         'weight'    => $weight,
@@ -337,7 +347,7 @@ function dashd_render_front_widget($atts) {
     ob_start();
     ?>
     <div id="<?php echo esc_attr($uid); ?>" class="dashd-widget-container uk-margin-large-bottom" 
-        data-key="<?php echo esc_attr($table); ?>" data-indicators="<?php echo esc_attr(implode(',', $active_indicator_ids)); ?>" data-lang="<?php echo esc_attr($lang); ?>" style="background: #fff; padding: 25px; border-radius: 8px; position: relative;">
+        data-key="<?php echo esc_attr($table); ?>" data-indicators="<?php echo esc_attr(implode(',', $active_indicator_specs)); ?>" data-lang="<?php echo esc_attr($lang); ?>" style="background: #fff; padding: 25px; border-radius: 8px; position: relative;">
         
         <?php if ($gated === 'true'): ?>
         <div class="dashd-modal-overlay" id="gated-modal-<?php echo esc_attr($uid); ?>" data-html2canvas-ignore="true">
@@ -640,7 +650,9 @@ function dashd_render_front_widget($atts) {
             syncPeriodControlVisibility();
             
             let url = `${config.ajax}?action=get_dashd_modern_data&key=${config.key}&lang=${config.lang}`;
-            if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
+            if (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length) {
+                url += `&indicators=${encodeURIComponent(config.indicatorSpecs.join(','))}`;
+            } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
                 url += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
             }
             if (viewMode === 'line') {
@@ -1654,7 +1666,9 @@ function dashd_render_front_widget($atts) {
 
                 try {
                     let periodsUrl = `${config.ajax}?action=get_dashd_periods_split&key=${config.key}`;
-                    if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
+                    if (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length) {
+                        periodsUrl += `&indicators=${encodeURIComponent(config.indicatorSpecs.join(','))}`;
+                    } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
                         periodsUrl += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
                     }
                     const pRes = await fetch(periodsUrl);
