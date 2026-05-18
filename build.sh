@@ -5,28 +5,58 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
+VERSION="n/a"
+
+# Final colored status line (always printed).
+print_final_status() {
+    local exit_code=$?
+    local ts
+    ts="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+    if [ "$exit_code" -eq 0 ]; then
+        printf '\n\033[1;32m%s\033[0m\n' "✅ STATUS: SUCCESS | VERSION: ${VERSION} | CREATED: ${ts}"
+    else
+        printf '\n\033[1;31m%s\033[0m\n' "❌ STATUS: FAILED | VERSION: ${VERSION} | TIME: ${ts}"
+    fi
+}
+trap print_final_status EXIT
+
 # 1. Повышаем версию, если передан параметр (patch, minor или major)
 # Дополнительно:
 # --yes  => пропустить подтверждение перед git commit
 BUMP_TYPE=""
 AUTO_YES=0
-
-for arg in "$@"; do
-    case "$arg" in
+RELEASE_COMMENT=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
         patch|minor|major)
             if [ -n "$BUMP_TYPE" ]; then
                 echo "⚠️ Ошибка: Параметр версии указан более одного раза."
-                echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes]"
+                echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] [--comment \"text\"]"
                 exit 1
             fi
-            BUMP_TYPE="$arg"
+            BUMP_TYPE="$1"
+            shift
             ;;
         --yes)
             AUTO_YES=1
+            shift
+            ;;
+        --comment)
+            if [ "$#" -lt 2 ]; then
+                echo "⚠️ Ошибка: Для --comment нужно передать текст комментария."
+                echo "💡 Пример: ./build.sh patch --comment \"mobile fixes\""
+                exit 1
+            fi
+            RELEASE_COMMENT="$2"
+            shift 2
+            ;;
+        --comment=*)
+            RELEASE_COMMENT="${1#--comment=}"
+            shift
             ;;
         *)
-            echo "⚠️ Ошибка: Недопустимый параметр '$arg'."
-            echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] (или без параметров для пересборки текущей версии)"
+            echo "⚠️ Ошибка: Недопустимый параметр '$1'."
+            echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] [--comment \"text\"] (или без параметров для пересборки текущей версии)"
             exit 1
             ;;
     esac
@@ -35,6 +65,8 @@ done
 if [ -n "$BUMP_TYPE" ]; then
     echo "⬆️ Повышение версии ($BUMP_TYPE)..."
     php bin/bump-version.php "$BUMP_TYPE"
+elif [ -n "${RELEASE_COMMENT// }" ]; then
+    echo "ℹ️ Параметр --comment передан без bump-уровня. Комментарий будет проигнорирован."
 fi
 
 # Настройки плагина
@@ -60,6 +92,9 @@ if [ -n "$BUMP_TYPE" ]; then
         git add -A
         if ! git diff --cached --quiet; then
             RELEASE_MSG="Release v${VERSION}"
+            if [ -n "${RELEASE_COMMENT// }" ]; then
+                RELEASE_MSG="${RELEASE_MSG} - ${RELEASE_COMMENT}"
+            fi
             echo "📋 Файлы, которые войдут в релизный коммит:"
             git diff --cached --name-status
 
@@ -80,6 +115,10 @@ if [ -n "$BUMP_TYPE" ]; then
         else
             echo "ℹ️ Изменений версии для коммита не обнаружено."
         fi
+
+        current_branch="$(git rev-parse --abbrev-ref HEAD)"
+        echo "🚀 Git push: origin/$current_branch"
+        git push -u origin "$current_branch"
     else
         echo "⚠️ Git-репозиторий не найден. Автокоммит пропущен."
     fi
