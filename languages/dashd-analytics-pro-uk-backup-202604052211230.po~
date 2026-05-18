@@ -1,0 +1,743 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: DashD Analytics Pro Engine\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-05 21:38+0000\n"
+"PO-Revision-Date: 2026-04-05 22:10+0000\n"
+"Last-Translator: admin\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10 >= 2 && "
+"n%10<=4 &&(n%100<10||n%100 >= 20)? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.8.3; wp-6.9.4; php-8.5.3\n"
+"X-Domain: dashd-analytics-pro"
+
+#: includes/admin-settings.php:113
+msgid "A light, diagonal text spanning across the report page."
+msgstr "Легкий діагональний текст, що простягається по всій сторінці звіту."
+
+#: includes/admin-settings.php:81 includes/admin-settings.php:485
+#: includes/admin-settings.php:526 includes/admin-settings.php:544
+#: includes/admin-settings.php:568 includes/admin-settings.php:610
+#: includes/admin-settings.php:636 includes/admin-ui.php:118
+#: includes/admin-ui.php:125
+msgid "Access denied"
+msgstr "Доступ заборонено"
+
+#: includes/admin-settings.php:180 includes/admin-settings.php:245
+msgid "Action"
+msgstr "Дія"
+
+#: includes/admin-ui.php:48
+msgid "Active Sources"
+msgstr "Активні джерела"
+
+#: includes/admin-settings.php:270
+msgid "Add Source"
+msgstr "Додати джерело даних"
+
+#: includes/admin-ui.php:93
+msgid "Added"
+msgstr "Успішно додано"
+
+#: includes/widget-renderer.php:144
+msgid "All Countries"
+msgstr "Всі країни"
+
+#: includes/admin-ui.php:27
+msgid "All data is up to date."
+msgstr "Усі дані актуалізовано."
+
+#: includes/admin-ui.php:29
+msgid "All raw records have been permanently deleted."
+msgstr "Усі записи було остаточно видалено."
+
+#: includes/widget-renderer.php:156
+msgid "An error occurred."
+msgstr "Сталася помилка."
+
+#: includes/widget-renderer.php:67
+msgid "Analytics Overview"
+msgstr "Огляд аналітики"
+
+#: dashd-analytics-pro.php:68
+msgid "Analytics Pro"
+msgstr "Analytics Pro"
+
+#: includes/admin-ui.php:23
+msgid "Analytics Pro Dashboard"
+msgstr "Панель управління Analytics Pro"
+
+#: includes/admin-settings.php:16
+msgid "Analytics Pro Settings"
+msgstr "Налаштування Analytics Pro"
+
+#: includes/admin-constructor.php:65
+msgid "Apply Preset"
+msgstr "Застосувати пресет"
+
+#: includes/admin-ui.php:81
+msgid ""
+"Are you absolutely sure you want to wipe all raw data? This cannot be undone!"
+msgstr ""
+"Ви абсолютно впевнені, що хочете видалити всі необроблені дані? Цю дію "
+"неможливо скасувати!"
+
+#: includes/admin-settings.php:459
+msgid "Armenian"
+msgstr "вірменська"
+
+#: includes/admin-ui.php:66
+msgid "Auto-Synchronization (WP Cron)"
+msgstr "Автоматична синхронізація (WP Cron)"
+
+#: includes/admin-constructor.php:41 includes/widget-renderer.php:71
+msgid "Bar"
+msgstr "Bar"
+
+#: includes/admin-settings.php:135
+msgid "Choose Company Logo"
+msgstr "Виберіть логотип компанії"
+
+#: includes/admin-settings.php:101
+msgid "Choose from Media Library"
+msgstr "Виберіть зображення із медіабібліотеки"
+
+#: includes/admin-settings.php:98
+msgid "Company Logo (Top Right):"
+msgstr "Логотип компанії (у правому верхньому куті):"
+
+#: includes/admin-settings.php:242
+msgid "Connected Sources"
+msgstr "Пов'язані джерела"
+
+#: dashd-analytics-pro.php:69
+msgid "Constructor 🎨"
+msgstr "Конструктор 🎨"
+
+#: includes/admin-ui.php:40
+msgid "Countries"
+msgstr "Країни"
+
+#: includes/admin-settings.php:28
+msgid "Countries Translation"
+msgstr "Переклад за країнами"
+
+#: includes/admin-settings.php:347
+msgid "Country"
+msgstr "Країна"
+
+#: includes/admin-constructor.php:62
+msgid "Custom Color Palette:"
+msgstr "Індивідуальна палітра кольорів:"
+
+#: includes/admin-ui.php:79
+msgid "Danger Zone: Wipe Data"
+msgstr "Небезпечна зона: Скидання даних"
+
+#. Name of the plugin
+msgid "DashD Analytics Pro Engine"
+msgstr "Механізм DashD Analytics Pro"
+
+#: includes/admin-constructor.php:31 includes/admin-settings.php:301
+msgid "Data Source:"
+msgstr "Джерело даних:"
+
+#: includes/admin-settings.php:27
+msgid "Data Sources & Raw Data"
+msgstr "Джерела даних та необроблені дані"
+
+#: includes/admin-ui.php:29
+msgid "Data wiped."
+msgstr "Дані видалено."
+
+#: includes/admin-settings.php:176 includes/admin-ui.php:93
+msgid "Date & Time"
+msgstr "Дата та час"
+
+#: includes/admin-constructor.php:38
+msgid "Default Mode & Scale:"
+msgstr "Режим та масштаб за замовчуванням:"
+
+#: includes/admin-settings.php:191
+msgid "Delete this lead?"
+msgstr "Видалити цей запит?"
+
+#: includes/admin-settings.php:253
+msgid "Delete this source?"
+msgstr "Видалити це джерело?"
+
+#: includes/admin-ui.php:93
+msgid "Details"
+msgstr "Деталі"
+
+#: includes/admin-settings.php:37
+msgid "Dictionaries Actions:"
+msgstr "Дії зі словниками:"
+
+#: includes/admin-ui.php:71
+msgid "Disabled"
+msgstr "Відключено"
+
+#: includes/admin-constructor.php:55
+msgid "Disabled (Free Download)"
+msgstr "Вимкнено (безкоштовне завантаження)"
+
+#: includes/admin-constructor.php:43 includes/widget-renderer.php:73
+msgid "Donut"
+msgstr "Donut"
+
+#: includes/admin-settings.php:166
+msgid "Download as CSV"
+msgstr "Завантажити у форматі CSV"
+
+#: includes/widget-renderer.php:102
+msgid "Download Dashboard as PDF"
+msgstr "Завантажити інформаційну панель у форматі PDF"
+
+#: includes/widget-renderer.php:99
+msgid "Download Data as CSV"
+msgstr "Завантажити дані у форматі CSV"
+
+#: includes/widget-renderer.php:41
+#, fuzzy
+msgid "Download Report"
+msgstr "Завантажити звіт"
+
+#: includes/admin-settings.php:178
+#, fuzzy
+msgid "Download Type"
+msgstr "Тип завантаження"
+
+#: includes/admin-settings.php:112
+#, fuzzy
+msgid "e.g. CONFIDENTIAL"
+msgstr "наприклад, КОНФІДЕНЦІЙНИЙ"
+
+#: includes/admin-settings.php:118
+#, fuzzy
+msgid "e.g. Generated by Analytics Pro. All rights reserved."
+msgstr "наприклад, згенеровані Analytics Pro. Всі права захищені."
+
+#: includes/admin-constructor.php:20
+#, fuzzy
+msgid "EBRD New Corporate"
+msgstr "ЄБРР Новий корпоративний"
+
+#: includes/admin-settings.php:361
+#, fuzzy
+msgid "Edit Value"
+msgstr "Редагувати значення"
+
+#: includes/admin-settings.php:177
+#, fuzzy
+msgid "Email Address"
+msgstr "Адреса електронної пошти"
+
+#: includes/admin-constructor.php:17
+#, fuzzy
+msgid "Emerald Nature"
+msgstr "Смарагдова природа"
+
+#: includes/admin-ui.php:72
+#, fuzzy
+msgid "Enabled (Daily)"
+msgstr "Увімкнено (щодня)"
+
+#: includes/admin-constructor.php:56
+#, fuzzy
+msgid "Enabled (Require Email)"
+msgstr "Увімкнено (Потрібна електронна пошта)"
+
+#: includes/admin-settings.php:459
+#, fuzzy
+msgid "English (Key)"
+msgstr "Англійська (основна)"
+
+#: includes/widget-renderer.php:154
+#, fuzzy
+msgid "Error generating PDF."
+msgstr "PDF, що генерує помилки."
+
+#: includes/admin-settings.php:381
+#, fuzzy
+msgid "Error updating value."
+msgstr "Помилка оновлення значення."
+
+#: includes/admin-settings.php:279
+#, fuzzy
+msgid "Export All Raw Data"
+msgstr "Експортувати всі необроблені дані"
+
+#: includes/admin-settings.php:162
+#, fuzzy
+msgid "Export Leads:"
+msgstr "Експорт потенційних клієнтів:"
+
+#: includes/admin-constructor.php:53
+#, fuzzy
+msgid "Export Protection (Gated Content):"
+msgstr "Захист експорту (закритий контент):"
+
+#: includes/admin-settings.php:42
+#, fuzzy
+msgid "Export Tab to CSV"
+msgstr "Експорт вкладки до CSV"
+
+#: includes/admin-ui.php:56
+#, fuzzy
+msgid "Fetch the latest data from all connected remote CSV sources."
+msgstr "Отримуйте найсвіжіші дані з усіх підключених віддалених джерел CSV."
+
+#: includes/admin-settings.php:117
+#, fuzzy
+msgid "Footer Signature:"
+msgstr "Нижній колонтитул Підпис:"
+
+#: includes/admin-settings.php:459
+#, fuzzy
+msgid "Georgian"
+msgstr "Грузинська"
+
+#: includes/admin-ui.php:55
+#, fuzzy
+msgid "Global Synchronization"
+msgstr "Глобальна синхронізація"
+
+#: includes/admin-settings.php:269
+#, fuzzy
+msgid "Google Sheets CSV URL"
+msgstr "URL-адреса CSV-файлу Google Sheets"
+
+#: includes/admin-constructor.php:58
+#, fuzzy
+msgid ""
+"If enabled, users will be prompted to enter their email before downloading "
+"CSV or PDF reports."
+msgstr ""
+"Якщо увімкнено, користувачам буде запропоновано ввести свою електронну "
+"адресу перед завантаженням звітів у форматі CSV або PDF."
+
+#: includes/admin-settings.php:287
+#, fuzzy
+msgid "Import Raw Data"
+msgstr "Імпорт необроблених даних"
+
+#: includes/admin-settings.php:53
+#, fuzzy
+msgid "Import Tab CSV"
+msgstr "Імпорт вкладки CSV"
+
+#: includes/admin-settings.php:346 includes/widget-renderer.php:145
+#, fuzzy
+msgid "Indicator"
+msgstr "Індикатор"
+
+#: includes/admin-ui.php:44
+#, fuzzy
+msgid "Indicators"
+msgstr "Індикатори"
+
+#: includes/admin-settings.php:29
+#, fuzzy
+msgid "Indicators Translation"
+msgstr "Переклад індикаторів"
+
+#: includes/admin-settings.php:646
+#, fuzzy
+msgid "Invalid CSV"
+msgstr "Неправильний CSV-файл"
+
+#: includes/admin-settings.php:583
+#, fuzzy
+msgid "Invalid or empty CSV file."
+msgstr "Неправильний або порожній файл CSV."
+
+#: includes/admin-settings.php:325
+#, fuzzy
+msgid "items"
+msgstr "пункти"
+
+#: includes/admin-settings.php:245
+#, fuzzy
+msgid "Key"
+msgstr "Ключ"
+
+#: includes/admin-settings.php:245 includes/admin-settings.php:268
+#, fuzzy
+msgid "Label"
+msgstr "Етикетка"
+
+#: includes/widget-renderer.php:148
+#, fuzzy
+msgid "Last updated:"
+msgstr "Останнє оновлення:"
+
+#: includes/admin-settings.php:155
+#, fuzzy
+msgid "Lead deleted."
+msgstr "Свинцеву нитку видалено."
+
+#: includes/admin-settings.php:31
+#, fuzzy
+msgid "Leads (Emails) 📩"
+msgstr "Ліди (електронні листи) 📩"
+
+#: includes/widget-renderer.php:76
+#, fuzzy
+msgid "Lin"
+msgstr "Лін"
+
+#: includes/admin-constructor.php:42 includes/widget-renderer.php:72
+#, fuzzy
+msgid "Line"
+msgstr "Лінія"
+
+#: includes/admin-constructor.php:46
+#, fuzzy
+msgid "Linear"
+msgstr "Лінійний"
+
+#: includes/admin-constructor.php:98
+#, fuzzy
+msgid "Loading preview..."
+msgstr "Завантаження попереднього перегляду..."
+
+#: includes/admin-constructor.php:47 includes/widget-renderer.php:77
+#, fuzzy
+msgid "Log"
+msgstr "Журнал"
+
+#: includes/admin-settings.php:63
+#, fuzzy
+msgid "Manage Country Names"
+msgstr "Керування назвами країн"
+
+#: includes/admin-settings.php:65
+#, fuzzy
+msgid "Manage Indicator Names"
+msgstr "Керування назвами індикаторів"
+
+#: includes/admin-settings.php:382
+#, fuzzy
+msgid "Network error during update."
+msgstr "Помилка мережі під час оновлення."
+
+#: includes/admin-settings.php:332
+#, fuzzy
+msgid "Next"
+msgstr "Далі"
+
+#: includes/admin-settings.php:553
+#, fuzzy
+msgid "No data to export in this tab."
+msgstr "На цій вкладці немає даних для експорту."
+
+#: includes/admin-settings.php:571 includes/admin-settings.php:639
+#, fuzzy
+msgid "No file uploaded."
+msgstr "Файл не завантажено."
+
+#: includes/admin-settings.php:199
+#, fuzzy
+msgid "No leads collected yet."
+msgstr "Поки що немає зачіпок."
+
+#: includes/admin-settings.php:489
+#, fuzzy
+msgid "No leads found."
+msgstr "Ніяких зачіпок не знайдено."
+
+#: includes/admin-settings.php:621
+#, fuzzy
+msgid "No raw data found."
+msgstr "Сирих даних не знайдено."
+
+#: includes/admin-settings.php:372
+#, fuzzy
+msgid "No records found for this source."
+msgstr "Для цього джерела не знайдено записів."
+
+#: includes/admin-settings.php:304
+#, fuzzy
+msgid "No sources connected"
+msgstr "Джерела не підключено"
+
+#: includes/admin-ui.php:98
+#, fuzzy
+msgid "No sync logs available yet."
+msgstr "Журналів синхронізації поки що немає."
+
+#: includes/admin-settings.php:85
+#, fuzzy
+msgid "PDF Branding settings saved successfully."
+msgstr "PDF Налаштування брендингу успішно збережено."
+
+#: includes/admin-settings.php:30
+#, fuzzy
+msgid "PDF Branding 🎨"
+msgstr "PDF-брендинг 🎨 🎨"
+
+#: includes/admin-settings.php:93
+#, fuzzy
+msgid "PDF Export Branding"
+msgstr "PDF Експортний брендинг"
+
+#: includes/widget-renderer.php:153
+#, fuzzy
+msgid "PDF libraries are still loading. Please try again in a second."
+msgstr ""
+"Бібліотеки PDF все ще завантажуються. Будь ласка, спробуйте ще раз через "
+"секунду."
+
+#: includes/admin-settings.php:345
+#, fuzzy
+msgid "Period"
+msgstr "Крапка"
+
+#: includes/widget-renderer.php:152
+#, fuzzy
+msgid "Please enter a valid email address."
+msgstr "Будь ласка, введіть дійсну адресу електронної пошти."
+
+#: includes/widget-renderer.php:42
+#, fuzzy
+msgid "Please enter your email address to unlock the export functionality."
+msgstr ""
+"Будь ласка, введіть свою електронну адресу, щоб розблокувати функцію "
+"експорту."
+
+#: includes/admin-settings.php:331
+#, fuzzy
+msgid "Prev"
+msgstr "Попередній"
+
+#: includes/admin-constructor.php:16
+#, fuzzy
+msgid "Professional Blue"
+msgstr "Професійний синій"
+
+#: includes/admin-settings.php:276
+#, fuzzy
+msgid "Raw Data Management:"
+msgstr "Управління необробленими даними:"
+
+#: includes/admin-ui.php:90
+#, fuzzy
+msgid "Recent Sync Logs"
+msgstr "Останні журнали синхронізації"
+
+#: includes/admin-settings.php:314
+#, fuzzy
+msgid "Records per page:"
+msgstr "Записи на сторінку:"
+
+#: includes/admin-constructor.php:85
+#, fuzzy
+msgid "Refresh & Preview"
+msgstr "Оновити та переглянути"
+
+#: includes/admin-settings.php:459
+#, fuzzy
+msgid "Romanian"
+msgstr "Румунська"
+
+#: includes/admin-settings.php:123
+#, fuzzy
+msgid "Save Branding"
+msgstr "Зберегти брендинг"
+
+#: includes/admin-settings.php:474
+#, fuzzy
+msgid "Save Manual Changes"
+msgstr "Зберегти ручні зміни"
+
+#: includes/admin-ui.php:74
+#, fuzzy
+msgid "Save Schedule"
+msgstr "Зберегти розклад"
+
+#: includes/admin-ui.php:31
+#, fuzzy
+msgid "Schedule updated."
+msgstr "Розклад оновлено."
+
+#: includes/widget-renderer.php:155
+#, fuzzy
+msgid "Server connection error."
+msgstr "Помилка з'єднання з сервером."
+
+#: includes/admin-ui.php:67
+#, fuzzy
+msgid ""
+"Set up automatic daily data fetching from your sources (max once a day)."
+msgstr ""
+"Налаштуйте автоматичне щоденне отримання даних з ваших джерел (максимум раз "
+"на день)."
+
+#: dashd-analytics-pro.php:70
+#, fuzzy
+msgid "Settings"
+msgstr "Налаштування"
+
+#: includes/admin-constructor.php:82
+#, fuzzy
+msgid "Shortcode:"
+msgstr "Короткий номер:"
+
+#: includes/admin-settings.php:267
+#, fuzzy
+msgid "Source Key (e.g. eu4b_2)"
+msgstr "Ключ джерела (наприклад, eu4b_2)"
+
+#: includes/admin-settings.php:179
+#, fuzzy
+msgid "Source Widget"
+msgstr "Віджет джерела"
+
+#: includes/admin-ui.php:60
+#, fuzzy
+msgid "Start Manual Sync"
+msgstr "Запустити синхронізацію вручну"
+
+#: includes/admin-ui.php:93
+#, fuzzy
+msgid "Status"
+msgstr "Статус"
+
+#: includes/admin-settings.php:20
+#, fuzzy, php-format
+msgid "Successfully imported %s dictionary records."
+msgstr "Успішно імпортовано записи словника %s."
+
+#: includes/admin-settings.php:23
+#, fuzzy, php-format
+msgid "Successfully processed %s Raw Data records."
+msgstr "Успішно оброблено %s записів Raw Data."
+
+#: includes/admin-constructor.php:18
+#, fuzzy
+msgid "Sunset Warmth"
+msgstr "Тепло заходу сонця"
+
+#: includes/admin-ui.php:27
+#, fuzzy
+msgid "Synchronization complete."
+msgstr "Синхронізацію завершено."
+
+#: includes/admin-settings.php:119
+#, fuzzy
+msgid "Text displayed at the very bottom of the PDF page."
+msgstr "Текст відображається в самому низу сторінки PDF."
+
+#: includes/admin-settings.php:94
+#, fuzzy
+msgid ""
+"These elements will be automatically injected into the PDF report when users "
+"download it from the frontend."
+msgstr ""
+"Ці елементи будуть автоматично додані до PDF-звіту, коли користувачі "
+"завантажать його з інтерфейсу."
+
+#: includes/admin-ui.php:80
+#, fuzzy
+msgid "This action will permanently delete all raw data records."
+msgstr "Ця дія назавжди видалить усі записи необроблених даних."
+
+#: includes/widget-renderer.php:147
+#, fuzzy
+msgid "Total"
+msgstr "Всього"
+
+#: includes/admin-ui.php:36
+#, fuzzy
+msgid "Total Records"
+msgstr "Всього записів"
+
+#: includes/admin-settings.php:450
+#, fuzzy
+msgid "Translations saved."
+msgstr "Переклади збережено."
+
+#: includes/widget-renderer.php:146
+#, fuzzy
+msgid "Trend"
+msgstr "Тенденція"
+
+#: includes/admin-settings.php:459
+#, fuzzy
+msgid "Ukrainian"
+msgstr "Українська"
+
+#: includes/widget-renderer.php:49 includes/widget-renderer.php:151
+#, fuzzy
+msgid "Unlock & Download"
+msgstr "Розблокувати та завантажити"
+
+#: includes/admin-ui.php:93
+#, fuzzy
+msgid "Updated"
+msgstr "Оновлено"
+
+#: includes/admin-settings.php:136
+#, fuzzy
+msgid "Use this logo"
+msgstr "Використовуйте цей логотип"
+
+#: includes/admin-settings.php:348
+#, fuzzy
+msgid "Value"
+msgstr "Значення"
+
+#: includes/widget-renderer.php:150
+#, fuzzy
+msgid "Verifying..."
+msgstr "Перевірка..."
+
+#: includes/admin-constructor.php:19
+#, fuzzy
+msgid "Vibrant Mix"
+msgstr "Яскравий мікс"
+
+#: includes/widget-renderer.php:109
+#, fuzzy
+msgid "View Detailed Table"
+msgstr "Переглянути детальну таблицю"
+
+#: includes/widget-renderer.php:149
+#, fuzzy
+msgid "Wait..."
+msgstr "Зачекай..."
+
+#: includes/admin-settings.php:111
+#, fuzzy
+msgid "Watermark Text:"
+msgstr "Текст водяного знаку:"
+
+#: dashd-analytics-pro.php:69 includes/admin-constructor.php:24
+#, fuzzy
+msgid "Widget Constructor"
+msgstr "Конструктор віджетів"
+
+#: includes/admin-constructor.php:28
+msgid "Widget Settings"
+msgstr "Налаштування віджета"
+
+#: includes/admin-ui.php:84
+msgid "Wipe All Raw Data"
+msgstr "Видалити всі необроблені дані"
+
+#: includes/widget-renderer.php:46
+msgid "your@email.com"
+msgstr "your@email.com"
+
+#. Description of the plugin
+#, fuzzy
+msgid ""
+"Реляционная система v9.3.0. Добавлена поддержка локализации (.mo/.po файлов)."
+msgstr ""
+"Реляційна система v9.3.0. Додано підтримку локалізації (.mo/.po файлів)."

@@ -1,0 +1,26 @@
+{
+    "@import": "./element.php",
+    "name": "dashd_widget",
+    "title": "Analytics Widget",
+    "group": "DashD Analytics",
+    "icon": "${url:images/icon.svg}",
+    "iconSmall": "${url:images/icon.svg}",
+    "element": true,
+    "templates": {
+        "render": "./templates/template.php",
+        "content": "./templates/content.php"
+    },
+    "defaults": {
+        "table": "",
+        "mode": "bar",
+        "scale": "linear",
+        "gated": false,
+        "colors": "#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B",
+        "colors_custom": "",
+        "custom_color_1": "",
+        "custom_color_2": "",
+        "custom_color_3": "",
+        "custom_color_4": "",
+        "custom_color_5": ""
+    }
+}

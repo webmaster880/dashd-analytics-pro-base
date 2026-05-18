@@ -1,0 +1,43 @@
+.
+├── README.md
+├── assets
+│   ├── gutenberg-block.js
+│   └── style.css
+├── build.sh
+├── dashd-analytics-pro.php
+├── includes
+│   ├── admin-constructor.php
+│   ├── admin-settings.php
+│   ├── admin-ui.php
+│   ├── analytics-api.php
+│   ├── database.php
+│   ├── integrations
+│   │   ├── dashd_widget
+│   │   │   ├── element.json
+│   │   │   ├── element.php
+│   │   │   ├── images
+│   │   │   │   └── icon.svg
+│   │   │   └── templates
+│   │   │       └── template.php
+│   │   ├── elementor.php
+│   │   ├── gutenberg.php
+│   │   ├── yootheme-module.php
+│   │   └── yootheme.php
+│   ├── legacy-api.php
+│   ├── sync-engine.php
+│   └── widget-renderer.php
+├── languages
+│   ├── dashd-analytics-pro-uk-backup-202604052210170.po~
+│   ├── dashd-analytics-pro-uk-backup-202604052211230.po~
+│   ├── dashd-analytics-pro-uk-backup-202604052212310.po~
+│   ├── dashd-analytics-pro-uk-backup-202604060019210.po~
+│   ├── dashd-analytics-pro-uk-backup-202604060020050.po~
+│   ├── dashd-analytics-pro-uk.l10n.php
+│   ├── dashd-analytics-pro-uk.mo
+│   ├── dashd-analytics-pro-uk.po
+│   └── dashd-analytics-pro.pot
+├── phpcs.xml
+├── tree.echo
+└── tree.txt
+
+8 directories, 33 files
