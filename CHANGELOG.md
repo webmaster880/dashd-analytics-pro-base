@@ -2,6 +2,41 @@
 
 All notable changes to this project are documented in this file.
 
+## [11.7.16] - 2026-05-18
+
+### Added
+- Bar behavior controls across all builders/integrations:
+  - `bar_orientation` (`horizontal` / `vertical`);
+  - `bar_stacked` (`stacked` / `normal`).
+- New optional widget parameter `country_order` for manual country sorting (comma-separated country names).
+- Country order control added to:
+  - Admin Constructor;
+  - Elementor widget settings;
+  - Gutenberg block inspector;
+  - YOOtheme widget settings + render helpers.
+
+### Improved
+- Frontend chart controls updated:
+  - country selector moved to top and centered;
+  - legend moved below chart with circular color markers;
+  - bar-orientation and stacked/normal controls hidden on frontend UI while logic remains active from saved settings.
+- Single-indicator yearly bar mode upgraded:
+  - chart now renders by years;
+  - yearly value is resolved from the latest available quarter for each year.
+- Bar rendering quality:
+  - unified corner rounding strategy bound to bar thickness;
+  - `normal` bar mode now applies rounding per each bar;
+  - grouped `normal` bars now include spacing between country bars.
+- Default color palette updated to:
+  - `#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7`
+  - applied consistently in shortcode defaults, constructor presets, preview fallback, and builder integrations.
+
+### Fixed
+- Indicator-based data source rendering:
+  - fixed cases where selected indicator(s) still rendered by full table;
+  - fixed multiple-indicator rendering regressions in frontend and builder previews.
+- Restored reliable chart rendering in constructor/frontend after indicator-mode refactor regressions.
+
 ## [11.4.6] - 2026-04-22
 
 ### Added
