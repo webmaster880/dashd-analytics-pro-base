@@ -6,17 +6,35 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
 # 1. Повышаем версию, если передан параметр (patch, minor или major)
-BUMP_TYPE="${1:-}"
+# Дополнительно:
+# --yes  => пропустить подтверждение перед git commit
+BUMP_TYPE=""
+AUTO_YES=0
+
+for arg in "$@"; do
+    case "$arg" in
+        patch|minor|major)
+            if [ -n "$BUMP_TYPE" ]; then
+                echo "⚠️ Ошибка: Параметр версии указан более одного раза."
+                echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes]"
+                exit 1
+            fi
+            BUMP_TYPE="$arg"
+            ;;
+        --yes)
+            AUTO_YES=1
+            ;;
+        *)
+            echo "⚠️ Ошибка: Недопустимый параметр '$arg'."
+            echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] (или без параметров для пересборки текущей версии)"
+            exit 1
+            ;;
+    esac
+done
 
 if [ -n "$BUMP_TYPE" ]; then
-    if [[ "$BUMP_TYPE" =~ ^(patch|minor|major)$ ]]; then
-        echo "⬆️ Повышение версии ($BUMP_TYPE)..."
-        php bin/bump-version.php "$BUMP_TYPE"
-    else
-        echo "⚠️ Ошибка: Недопустимый параметр '$BUMP_TYPE'."
-        echo "💡 Используйте: ./build.sh [patch|minor|major] (или без параметров для пересборки текущей версии)"
-        exit 1
-    fi
+    echo "⬆️ Повышение версии ($BUMP_TYPE)..."
+    php bin/bump-version.php "$BUMP_TYPE"
 fi
 
 # Настройки плагина
@@ -37,13 +55,26 @@ fi
 # 1.1 Автокоммит версии в git после bump (если bump был запрошен)
 if [ -n "$BUMP_TYPE" ]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        FILES_TO_ADD=("$PLUGIN_MAIN_FILE")
-        [ -f "README.md" ] && FILES_TO_ADD+=("README.md")
-        [ -f "readme.md" ] && FILES_TO_ADD+=("readme.md")
-
-        git add "${FILES_TO_ADD[@]}"
+        # Commit full project snapshot for the release, not only version files.
+        # This prevents drift where code changes stay local but version is pushed.
+        git add -A
         if ! git diff --cached --quiet; then
             RELEASE_MSG="Release v${VERSION}"
+            echo "📋 Файлы, которые войдут в релизный коммит:"
+            git diff --cached --name-status
+
+            if [ "$AUTO_YES" -ne 1 ]; then
+                read -r -p "Подтвердить git commit \"$RELEASE_MSG\"? [y/N]: " CONFIRM_RELEASE_COMMIT
+                case "$CONFIRM_RELEASE_COMMIT" in
+                    y|Y|yes|YES)
+                        ;;
+                    *)
+                        echo "⏹️ Коммит отменен пользователем. Сборка остановлена."
+                        exit 1
+                        ;;
+                esac
+            fi
+
             echo "📝 Git commit: $RELEASE_MSG"
             git commit -m "$RELEASE_MSG"
         else
