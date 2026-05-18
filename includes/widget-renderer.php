@@ -400,7 +400,7 @@ function dashd_render_front_widget($atts) {
         </div>
         <?php endif; ?>
         
-        <div class="dashd-country-btns uk-margin-small-bottom uk-flex uk-flex-wrap" style="gap:5px;"></div>
+        <div class="dashd-country-btns uk-margin-small-bottom uk-flex uk-flex-wrap" style="gap:5px;justify-content:center;"></div>
 
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
             <h3 class="uk-h4 uk-margin-remove dashd-widget-title" data-default-title="<?php echo esc_attr(__('Analytics Overview', 'dashd-analytics-pro')); ?>"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>

@@ -5,6 +5,7 @@
     --dashd-border: #cbd5e1;
     --dashd-bg-light: #f8fafc;
     --dashd-text: #334155;
+    --dashd-gray: #e0e0e0;
 }
 
 /* Общие кнопки */
@@ -99,9 +100,9 @@
 }
 
 .dashd-country-btns .dashd-country-btn.active-btn {
-    background: #0b5ed7 !important;
-    border-color: #0b5ed7 !important;
-    color: #ffffff !important;
+    background: var(--dashd-gray) !important;
+    border-color: #9ca3af !important;
+    color: #1f2937 !important;
     box-shadow: 0 3px 10px rgba(11, 94, 215, 0.25);
 }
 
