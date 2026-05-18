@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.12
+ * Version: 11.7.13
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.12');
+define('DASHD_VERSION', '11.7.13');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));
@@ -662,6 +662,11 @@ add_action('wp_ajax_dashd_render_preview', function() {
     $show_view_toggle = $bool_like($parsed_atts['show_view_toggle'] ?? 'true', true) ? 'true' : 'false';
     $show_scale_toggle = $bool_like($parsed_atts['show_scale_toggle'] ?? 'true', true) ? 'true' : 'false';
     $show_periods = $bool_like($parsed_atts['show_periods'] ?? 'true', true) ? 'true' : 'false';
+    $bar_orientation = strtolower(trim((string) ($parsed_atts['bar_orientation'] ?? 'horizontal')));
+    if (!in_array($bar_orientation, ['horizontal', 'vertical'], true)) {
+        $bar_orientation = 'horizontal';
+    }
+    $bar_stacked = $bool_like($parsed_atts['bar_stacked'] ?? 'true', true) ? 'true' : 'false';
 
     $safe_colors = [];
     $colors_raw = is_scalar($parsed_atts['colors'] ?? '') ? (string) $parsed_atts['colors'] : '';
@@ -683,6 +688,8 @@ add_action('wp_ajax_dashd_render_preview', function() {
         'show_view_toggle' => $show_view_toggle,
         'show_scale_toggle' => $show_scale_toggle,
         'show_periods' => $show_periods,
+        'bar_orientation' => $bar_orientation,
+        'bar_stacked' => $bar_stacked,
         'colors' => implode(', ', $safe_colors),
     ];
 

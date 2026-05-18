@@ -15,6 +15,8 @@
         "indicators": [],
         "mode": "bar",
         "scale": "linear",
+        "bar_orientation": "horizontal",
+        "bar_stacked": true,
         "gated": false,
         "show_view_toggle": true,
         "show_scale_toggle": true,

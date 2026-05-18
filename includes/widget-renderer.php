@@ -215,6 +215,8 @@ function dashd_render_front_widget($atts) {
         'show_view_toggle' => 'true',
         'show_scale_toggle' => 'true',
         'show_periods' => 'true',
+        'bar_orientation' => 'horizontal',
+        'bar_stacked' => 'true',
     ], $atts);
 
     $default_colors = ['#E5D6FF', '#E3F263', '#336DFF', '#8b5cf6', '#58595B'];
@@ -292,6 +294,11 @@ function dashd_render_front_widget($atts) {
     $show_view_toggle = $bool_from_atts($a['show_view_toggle'] ?? 'true', true);
     $show_scale_toggle = $bool_from_atts($a['show_scale_toggle'] ?? 'true', true);
     $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
+    $bar_orientation = strtolower(trim((string) ($a['bar_orientation'] ?? 'horizontal')));
+    if (!in_array($bar_orientation, ['horizontal', 'vertical'], true)) {
+        $bar_orientation = 'horizontal';
+    }
+    $bar_stacked = $bool_from_atts($a['bar_stacked'] ?? 'true', true);
 
     $weight = is_numeric($a['weight']) ? (float) $a['weight'] : 3.0;
     $weight = max(1, min(10, $weight));
@@ -346,6 +353,8 @@ function dashd_render_front_widget($atts) {
         'showViewToggle' => $show_view_toggle,
         'showScaleToggle' => $show_scale_toggle,
         'showPeriods' => $show_periods,
+        'barOrientation' => $bar_orientation,
+        'barStacked' => $bar_stacked,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
     ];
 
@@ -405,7 +414,7 @@ function dashd_render_front_widget($atts) {
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
             <h3 class="uk-h4 uk-margin-remove dashd-widget-title" data-default-title="<?php echo esc_attr(__('Analytics Overview', 'dashd-analytics-pro')); ?>"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>
             <div class="uk-flex uk-flex-column dashd-controls-stack" style="align-items: flex-end; gap: 10px;">
-                <div class="uk-flex uk-flex-middle dashd-controls-desktop" style="gap:10px;<?php echo (!$show_view_toggle && !$show_scale_toggle) ? 'display:none;' : ''; ?>">
+                <div class="uk-flex uk-flex-middle dashd-controls-desktop" style="gap:10px;">
                     <div class="dashd-view-selector dashd-toggle-view" data-html2canvas-ignore="true" style="<?php echo !$show_view_toggle ? 'display:none;' : ''; ?>">
                         <div class="dashd-selector-label <?php echo $mode === 'bar' ? 'active' : ''; ?>" data-type="bar"><?php esc_html_e('Bar', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $mode === 'line' ? 'active' : ''; ?>" data-type="line"><?php esc_html_e('Line', 'dashd-analytics-pro'); ?></div>
@@ -415,8 +424,16 @@ function dashd_render_front_widget($atts) {
                         <div class="dashd-selector-label <?php echo $scale === 'linear' ? 'active' : ''; ?>" data-scale="linear"><?php esc_html_e('Lin', 'dashd-analytics-pro'); ?></div>
                         <div class="dashd-selector-label <?php echo $scale === 'logarithmic' ? 'active' : ''; ?>" data-scale="logarithmic"><?php esc_html_e('Log', 'dashd-analytics-pro'); ?></div>
                     </div>
+                    <div class="dashd-view-selector dashd-toggle-orientation" data-html2canvas-ignore="true">
+                        <div class="dashd-selector-label <?php echo $bar_orientation === 'horizontal' ? 'active' : ''; ?>" data-orientation="horizontal"><?php esc_html_e('Horizontal', 'dashd-analytics-pro'); ?></div>
+                        <div class="dashd-selector-label <?php echo $bar_orientation === 'vertical' ? 'active' : ''; ?>" data-orientation="vertical"><?php esc_html_e('Vertical', 'dashd-analytics-pro'); ?></div>
+                    </div>
+                    <div class="dashd-view-selector dashd-toggle-stacked" data-html2canvas-ignore="true">
+                        <div class="dashd-selector-label <?php echo $bar_stacked ? 'active' : ''; ?>" data-stacked="true"><?php esc_html_e('Stacked', 'dashd-analytics-pro'); ?></div>
+                        <div class="dashd-selector-label <?php echo !$bar_stacked ? 'active' : ''; ?>" data-stacked="false"><?php esc_html_e('Normal', 'dashd-analytics-pro'); ?></div>
+                    </div>
                 </div>
-                <div class="dashd-mobile-controls" data-html2canvas-ignore="true" style="<?php echo (!$show_view_toggle && !$show_scale_toggle && !$show_periods) ? 'display:none;' : ''; ?>">
+                <div class="dashd-mobile-controls" data-html2canvas-ignore="true">
                     <label class="dashd-mobile-field dashd-mobile-field-view" style="<?php echo !$show_view_toggle ? 'display:none;' : ''; ?>">
                         <span><?php esc_html_e('View', 'dashd-analytics-pro'); ?></span>
                         <select class="dashd-mobile-select dashd-mobile-view">
@@ -430,6 +447,20 @@ function dashd_render_front_widget($atts) {
                         <select class="dashd-mobile-select dashd-mobile-scale">
                             <option value="linear" <?php selected($scale, 'linear'); ?>><?php esc_html_e('Linear', 'dashd-analytics-pro'); ?></option>
                             <option value="logarithmic" <?php selected($scale, 'logarithmic'); ?>><?php esc_html_e('Logarithmic', 'dashd-analytics-pro'); ?></option>
+                        </select>
+                    </label>
+                    <label class="dashd-mobile-field dashd-mobile-field-orientation">
+                        <span><?php esc_html_e('Bars', 'dashd-analytics-pro'); ?></span>
+                        <select class="dashd-mobile-select dashd-mobile-orientation">
+                            <option value="horizontal" <?php selected($bar_orientation, 'horizontal'); ?>><?php esc_html_e('Horizontal', 'dashd-analytics-pro'); ?></option>
+                            <option value="vertical" <?php selected($bar_orientation, 'vertical'); ?>><?php esc_html_e('Vertical', 'dashd-analytics-pro'); ?></option>
+                        </select>
+                    </label>
+                    <label class="dashd-mobile-field dashd-mobile-field-stacked">
+                        <span><?php esc_html_e('Bar Type', 'dashd-analytics-pro'); ?></span>
+                        <select class="dashd-mobile-select dashd-mobile-stacked">
+                            <option value="true" <?php selected($bar_stacked, true); ?>><?php esc_html_e('Stacked', 'dashd-analytics-pro'); ?></option>
+                            <option value="false" <?php selected($bar_stacked, false); ?>><?php esc_html_e('Normal', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </label>
                     <label class="dashd-mobile-field dashd-mobile-field-year" style="<?php echo !$show_periods ? 'display:none;' : ''; ?>">
@@ -522,6 +553,8 @@ function dashd_render_front_widget($atts) {
         
         let chart = null, rawData = null, trendData = null,
             viewMode = config.viewMode, scaleMode = config.scaleMode,
+            barOrientation = config.barOrientation || 'horizontal',
+            barStacked = Boolean(config.barStacked),
             curCty = i18n.allCountries, curY = null, curQ = null;
             
         let sparklines = [];
@@ -532,14 +565,21 @@ function dashd_render_front_widget($atts) {
             quarterButtonsBox: root.querySelector('.dashd-q-btns'),
             desktopViewToggle: root.querySelector('.dashd-toggle-view'),
             desktopScaleToggle: root.querySelector('.dashd-toggle-scale'),
+            desktopOrientationToggle: root.querySelector('.dashd-toggle-orientation'),
+            desktopStackedToggle: root.querySelector('.dashd-toggle-stacked'),
             mobileViewSelect: root.querySelector('.dashd-mobile-view'),
             mobileScaleSelect: root.querySelector('.dashd-mobile-scale'),
+            mobileOrientationSelect: root.querySelector('.dashd-mobile-orientation'),
+            mobileStackedSelect: root.querySelector('.dashd-mobile-stacked'),
             mobileYearSelect: root.querySelector('.dashd-mobile-year'),
             mobileQuarterSelect: root.querySelector('.dashd-mobile-quarter'),
             mobileFieldView: root.querySelector('.dashd-mobile-field-view'),
             mobileFieldScale: root.querySelector('.dashd-mobile-field-scale'),
+            mobileFieldOrientation: root.querySelector('.dashd-mobile-field-orientation'),
+            mobileFieldStacked: root.querySelector('.dashd-mobile-field-stacked'),
             mobileFieldYear: root.querySelector('.dashd-mobile-field-year'),
-            mobileFieldQuarter: root.querySelector('.dashd-mobile-field-quarter')
+            mobileFieldQuarter: root.querySelector('.dashd-mobile-field-quarter'),
+            mobileControlsWrap: root.querySelector('.dashd-mobile-controls')
         };
 
         const loader = root.querySelector('.dashd-loader-overlay');
@@ -596,7 +636,7 @@ function dashd_render_front_widget($atts) {
             return color;
         };
 
-        const getStackSegmentRadius = (countryIndex, valuesByCountry, countries) => {
+        const getStackSegmentRadius = (countryIndex, valuesByCountry, countries, orientation = 'horizontal') => {
             return (ctx) => {
                 const pointIndex = Number(ctx?.dataIndex ?? -1);
                 if (pointIndex < 0) return 0;
@@ -620,10 +660,14 @@ function dashd_render_front_widget($atts) {
                 if (firstVisible === -1) return 0;
                 if (firstVisible === lastVisible) return 999;
                 if (countryIndex === firstVisible) {
-                    return { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
+                    return orientation === 'vertical'
+                        ? { topLeft: 0, bottomLeft: 999, topRight: 0, bottomRight: 999 }
+                        : { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
                 }
                 if (countryIndex === lastVisible) {
-                    return { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
+                    return orientation === 'vertical'
+                        ? { topLeft: 999, bottomLeft: 0, topRight: 999, bottomRight: 0 }
+                        : { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
                 }
                 return 0;
             };
@@ -667,6 +711,12 @@ function dashd_render_front_widget($atts) {
             root.querySelectorAll('.dashd-toggle-scale .dashd-selector-label').forEach((el) => {
                 el.classList.toggle('active', el.dataset.scale === scaleMode);
             });
+            root.querySelectorAll('.dashd-toggle-orientation .dashd-selector-label').forEach((el) => {
+                el.classList.toggle('active', el.dataset.orientation === barOrientation);
+            });
+            root.querySelectorAll('.dashd-toggle-stacked .dashd-selector-label').forEach((el) => {
+                el.classList.toggle('active', String(el.dataset.stacked) === String(barStacked));
+            });
         };
 
         const syncPeriodButtons = () => {
@@ -688,6 +738,12 @@ function dashd_render_front_widget($atts) {
             }
             if (controls.mobileScaleSelect) {
                 controls.mobileScaleSelect.value = scaleMode;
+            }
+            if (controls.mobileOrientationSelect) {
+                controls.mobileOrientationSelect.value = barOrientation;
+            }
+            if (controls.mobileStackedSelect) {
+                controls.mobileStackedSelect.value = barStacked ? 'true' : 'false';
             }
             if (controls.mobileYearSelect && curY !== null) {
                 controls.mobileYearSelect.value = String(curY);
@@ -729,6 +785,31 @@ function dashd_render_front_widget($atts) {
             }
             if (controls.mobileFieldScale) {
                 controls.mobileFieldScale.style.display = Boolean(config.showScaleToggle) ? 'flex' : 'none';
+            }
+
+            const showBarControls = viewMode === 'bar';
+            if (controls.desktopOrientationToggle) {
+                controls.desktopOrientationToggle.style.display = showBarControls ? '' : 'none';
+            }
+            if (controls.desktopStackedToggle) {
+                controls.desktopStackedToggle.style.display = showBarControls ? '' : 'none';
+            }
+            if (controls.mobileFieldOrientation) {
+                controls.mobileFieldOrientation.style.display = showBarControls ? 'flex' : 'none';
+            }
+            if (controls.mobileFieldStacked) {
+                controls.mobileFieldStacked.style.display = showBarControls ? 'flex' : 'none';
+            }
+
+            const showDesktopControls = Boolean(config.showViewToggle) || Boolean(config.showScaleToggle) || showBarControls;
+            const desktopControlsWrap = controls.desktopViewToggle ? controls.desktopViewToggle.parentNode : null;
+            if (desktopControlsWrap) {
+                desktopControlsWrap.style.display = showDesktopControls ? 'flex' : 'none';
+            }
+
+            const showMobileControls = Boolean(config.showViewToggle) || Boolean(config.showScaleToggle) || Boolean(config.showPeriods) || showBarControls;
+            if (controls.mobileControlsWrap) {
+                controls.mobileControlsWrap.style.display = showMobileControls ? '' : 'none';
             }
         };
 
@@ -904,7 +985,8 @@ function dashd_render_front_widget($atts) {
             let d = { labels: [], datasets: [] };
             
             let maxVal = 0; let y1Max = 0; let useSecondaryAxis = false;
-            const isStackedBar = (viewMode === 'bar' && curCty === i18n.allCountries);
+            const isStackedBar = (viewMode === 'bar' && curCty === i18n.allCountries && barStacked);
+            const isBarVertical = (viewMode === 'bar' && barOrientation === 'vertical');
 
             if (viewMode === 'line' && trendData) {
                 d.labels = trendData.periods;
@@ -997,7 +1079,7 @@ function dashd_render_front_widget($atts) {
                                 label: country,
                                 data: annual.valuesByCountry[country] || [],
                                 backgroundColor: getCountryColor(country, countryIdx),
-                                borderRadius: getStackSegmentRadius(countryIdx, annual.valuesByCountry, annual.countries),
+                                borderRadius: getStackSegmentRadius(countryIdx, annual.valuesByCountry, annual.countries, barOrientation),
                                 borderSkipped: false
                             });
                         });
@@ -1037,7 +1119,7 @@ function dashd_render_front_widget($atts) {
                             label: c,
                             data: vals,
                             backgroundColor: getCountryColor(c, i),
-                            borderRadius: getStackSegmentRadius(i, stackedValuesByCountry, rawData.countries),
+                            borderRadius: getStackSegmentRadius(i, stackedValuesByCountry, rawData.countries, barOrientation),
                             borderSkipped: false
                         });
                     });
@@ -1133,7 +1215,7 @@ function dashd_render_front_widget($atts) {
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    indexAxis: viewMode === 'bar' ? 'y' : 'x', 
+                    indexAxis: viewMode === 'bar' ? (isBarVertical ? 'x' : 'y') : 'x', 
                     animation: { onComplete: hideLoader },
                     color: textColor,
                     plugins: {
@@ -1188,11 +1270,15 @@ function dashd_render_front_widget($atts) {
                             }
                         }
                     },
-                    scales: viewMode !== 'donut' ? {
-                        x: (viewMode === 'bar') ? valueAxisConfig : categoryAxisConfig,
-                        y: (viewMode === 'bar') ? categoryAxisConfig : valueAxisConfig,
-                        ...(useSecondaryAxis && viewMode === 'line' ? { y1: y1Config } : {})
-                    } : {}
+                    scales: viewMode !== 'donut' ? (viewMode === 'bar'
+                        ? (isBarVertical
+                            ? { x: categoryAxisConfig, y: valueAxisConfig }
+                            : { x: valueAxisConfig, y: categoryAxisConfig })
+                        : {
+                            x: categoryAxisConfig,
+                            y: valueAxisConfig,
+                            ...(useSecondaryAxis ? { y1: y1Config } : {})
+                        }) : {}
                 }
             });            
 
@@ -1332,6 +1418,27 @@ function dashd_render_front_widget($atts) {
                     renderChart();
                 };
             });
+            root.querySelectorAll('.dashd-toggle-orientation .dashd-selector-label').forEach((el) => {
+                el.onclick = function() {
+                    const nextOrientation = String(this.dataset.orientation || '');
+                    if (!nextOrientation || nextOrientation === barOrientation) return;
+                    barOrientation = nextOrientation === 'vertical' ? 'vertical' : 'horizontal';
+                    syncDesktopSelectors();
+                    syncMobileSelectors();
+                    renderChart();
+                };
+            });
+            root.querySelectorAll('.dashd-toggle-stacked .dashd-selector-label').forEach((el) => {
+                el.onclick = function() {
+                    const next = String(this.dataset.stacked || '');
+                    const nextStacked = (next === 'true');
+                    if (nextStacked === barStacked) return;
+                    barStacked = nextStacked;
+                    syncDesktopSelectors();
+                    syncMobileSelectors();
+                    renderChart();
+                };
+            });
 
             if (controls.mobileViewSelect) {
                 controls.mobileViewSelect.onchange = function() {
@@ -1348,6 +1455,27 @@ function dashd_render_front_widget($atts) {
                     const nextScale = String(this.value || '');
                     if (!nextScale || nextScale === scaleMode) return;
                     scaleMode = nextScale;
+                    syncDesktopSelectors();
+                    syncMobileSelectors();
+                    renderChart();
+                };
+            }
+            if (controls.mobileOrientationSelect) {
+                controls.mobileOrientationSelect.onchange = function() {
+                    const next = String(this.value || '');
+                    const nextOrientation = next === 'vertical' ? 'vertical' : 'horizontal';
+                    if (nextOrientation === barOrientation) return;
+                    barOrientation = nextOrientation;
+                    syncDesktopSelectors();
+                    syncMobileSelectors();
+                    renderChart();
+                };
+            }
+            if (controls.mobileStackedSelect) {
+                controls.mobileStackedSelect.onchange = function() {
+                    const nextStacked = String(this.value || '') === 'true';
+                    if (nextStacked === barStacked) return;
+                    barStacked = nextStacked;
                     syncDesktopSelectors();
                     syncMobileSelectors();
                     renderChart();

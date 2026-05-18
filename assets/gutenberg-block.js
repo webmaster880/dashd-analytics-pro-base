@@ -61,6 +61,24 @@
                             ],
                             onChange: (val) => setAttributes({ scale: val })
                         }),
+                        el(SelectControl, {
+                            label: 'Bar Orientation',
+                            value: attributes.bar_orientation || 'horizontal',
+                            options: [
+                                { label: 'Horizontal', value: 'horizontal' },
+                                { label: 'Vertical', value: 'vertical' }
+                            ],
+                            onChange: (val) => setAttributes({ bar_orientation: val })
+                        }),
+                        el(SelectControl, {
+                            label: 'Bar Type',
+                            value: attributes.bar_stacked || 'true',
+                            options: [
+                                { label: 'Stacked', value: 'true' },
+                                { label: 'Normal', value: 'false' }
+                            ],
+                            onChange: (val) => setAttributes({ bar_stacked: val })
+                        }),
                         el(ToggleControl, {
                             label: 'Gated Content (Require Email)',
                             checked: attributes.gated === 'true',

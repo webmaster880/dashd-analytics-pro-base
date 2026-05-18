@@ -98,6 +98,13 @@ if (!function_exists('dashd_yootheme_normalize_scale')) {
     }
 }
 
+if (!function_exists('dashd_yootheme_normalize_bar_orientation')) {
+    function dashd_yootheme_normalize_bar_orientation($value) {
+        $value = strtolower(trim((string) $value));
+        return in_array($value, ['horizontal', 'vertical'], true) ? $value : 'horizontal';
+    }
+}
+
 if (!function_exists('dashd_yootheme_normalize_gated')) {
     function dashd_yootheme_normalize_gated($value) {
         return !empty($value) ? 'true' : 'false';
@@ -198,6 +205,8 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $show_view_toggle = dashd_yootheme_normalize_toggle($props['show_view_toggle'] ?? true, true);
         $show_scale_toggle = dashd_yootheme_normalize_toggle($props['show_scale_toggle'] ?? true, true);
         $show_periods = dashd_yootheme_normalize_toggle($props['show_periods'] ?? true, true);
+        $bar_orientation = dashd_yootheme_normalize_bar_orientation($props['bar_orientation'] ?? 'horizontal');
+        $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
 
         $preset = dashd_yootheme_normalize_palette($props['colors'] ?? '#E5D6FF, #E3F263, #336DFF, #8B5CF6, #58595B');
         $custom = dashd_yootheme_extract_custom_palette($props);
@@ -215,6 +224,8 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'show_view_toggle' => $show_view_toggle,
             'show_scale_toggle' => $show_scale_toggle,
             'show_periods' => $show_periods,
+            'bar_orientation' => $bar_orientation,
+            'bar_stacked' => $bar_stacked,
             'colors' => $colors,
         ];
     }
@@ -228,7 +239,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" bar_orientation="%s" bar_stacked="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -237,6 +248,8 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['show_view_toggle'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_scale_toggle'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_periods'] ?? 'true'),
+            dashd_yootheme_escape_attr($normalized['bar_orientation'] ?? 'horizontal'),
+            dashd_yootheme_escape_attr($normalized['bar_stacked'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['colors'] ?? '')
         );
     }

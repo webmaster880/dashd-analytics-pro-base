@@ -13,6 +13,8 @@ add_action('init', function() {
             'indicators' => ['type' => 'array', 'default' => [], 'items' => ['type' => 'string']],
             'mode'     => ['type' => 'string', 'default' => 'bar'],
             'scale'    => ['type' => 'string', 'default' => 'linear'],
+            'bar_orientation' => ['type' => 'string', 'default' => 'horizontal'],
+            'bar_stacked' => ['type' => 'string', 'default' => 'true'],
             'gated'    => ['type' => 'string', 'default' => 'false'],
             'show_view_toggle' => ['type' => 'string', 'default' => 'true'],
             'show_scale_toggle' => ['type' => 'string', 'default' => 'true'],

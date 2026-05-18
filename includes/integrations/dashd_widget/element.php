@@ -85,6 +85,21 @@ return [
                 'Logarithmic' => 'logarithmic',
             ],
         ],
+        'bar_orientation' => [
+            'label' => 'Bar Orientation',
+            'type' => 'select',
+            'options' => [
+                'Horizontal' => 'horizontal',
+                'Vertical' => 'vertical',
+            ],
+            'default' => 'horizontal',
+        ],
+        'bar_stacked' => [
+            'label' => 'Bar Type',
+            'type' => 'checkbox',
+            'text' => 'Stacked',
+            'default' => true,
+        ],
         'gated' => [
             'label' => 'Gated Content',
             'type' => 'checkbox',
@@ -292,6 +307,8 @@ return [
                         'indicators',
                         'mode',
                         'scale',
+                        'bar_orientation',
+                        'bar_stacked',
                         'gated',
                         'show_view_toggle',
                         'show_scale_toggle',

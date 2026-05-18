@@ -62,6 +62,16 @@ function dashd_admin_constructor_page() {
                             <option value="logarithmic"><?php esc_html_e('Log', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </div>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <select id="c_bar_orientation" class="uk-select" style="flex:1;">
+                            <option value="horizontal"><?php esc_html_e('Bar: Horizontal', 'dashd-analytics-pro'); ?></option>
+                            <option value="vertical"><?php esc_html_e('Bar: Vertical', 'dashd-analytics-pro'); ?></option>
+                        </select>
+                        <select id="c_bar_stacked" class="uk-select" style="flex:1;">
+                            <option value="true"><?php esc_html_e('Bar Type: Stacked', 'dashd-analytics-pro'); ?></option>
+                            <option value="false"><?php esc_html_e('Bar Type: Normal', 'dashd-analytics-pro'); ?></option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
@@ -165,12 +175,16 @@ function dashd_admin_constructor_page() {
             const showViewToggle = document.getElementById('c_show_view_toggle').checked ? 'true' : 'false';
             const showScaleToggle = document.getElementById('c_show_scale_toggle').checked ? 'true' : 'false';
             const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
+            const barOrientation = document.getElementById('c_bar_orientation').value;
+            const barStacked = document.getElementById('c_bar_stacked').value;
             
             let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
             shortcode += ` show_view_toggle="${showViewToggle}"`;
             shortcode += ` show_scale_toggle="${showScaleToggle}"`;
             shortcode += ` show_periods="${showPeriods}"`;
+            shortcode += ` bar_orientation="${barOrientation}"`;
+            shortcode += ` bar_stacked="${barStacked}"`;
             shortcode += `]`;
             
             document.getElementById('res_sc').value = shortcode; 
@@ -213,7 +227,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_bar_orientation', 'c_bar_stacked'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;
