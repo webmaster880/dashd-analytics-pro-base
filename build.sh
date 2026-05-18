@@ -34,6 +34,26 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
+# 1.1 Автокоммит версии в git после bump (если bump был запрошен)
+if [ -n "$BUMP_TYPE" ]; then
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        FILES_TO_ADD=("$PLUGIN_MAIN_FILE")
+        [ -f "README.md" ] && FILES_TO_ADD+=("README.md")
+        [ -f "readme.md" ] && FILES_TO_ADD+=("readme.md")
+
+        git add "${FILES_TO_ADD[@]}"
+        if ! git diff --cached --quiet; then
+            RELEASE_MSG="Release v${VERSION}"
+            echo "📝 Git commit: $RELEASE_MSG"
+            git commit -m "$RELEASE_MSG"
+        else
+            echo "ℹ️ Изменений версии для коммита не обнаружено."
+        fi
+    else
+        echo "⚠️ Git-репозиторий не найден. Автокоммит пропущен."
+    fi
+fi
+
 ZIP_NAME="${PLUGIN_SLUG}-v${VERSION}.zip"
 
 echo "🚀 Сборка плагина: $PLUGIN_SLUG, Версия: $VERSION"

@@ -88,4 +88,63 @@ if ($result === false) {
     exit(1);
 }
 
+$readmeCandidates = [
+    $root . '/README.md',
+    $root . '/readme.md',
+];
+
+$readmeTargets = [];
+foreach ($readmeCandidates as $candidate) {
+    if (!is_file($candidate)) {
+        continue;
+    }
+    $real = realpath($candidate);
+    $key = is_string($real) && $real !== '' ? $real : $candidate;
+    $readmeTargets[$key] = $candidate;
+}
+
+foreach ($readmeTargets as $readmeFile) {
+    if (!is_readable($readmeFile)) {
+        fwrite(STDERR, "README file is not readable: {$readmeFile}\n");
+        exit(1);
+    }
+
+    $readme = file_get_contents($readmeFile);
+    if ($readme === false) {
+        fwrite(STDERR, "Unable to read README file: {$readmeFile}\n");
+        exit(1);
+    }
+
+    $readme = preg_replace(
+        '/^(\s*(?:-\s*)?Stable version:\s*`)([0-9]+\.[0-9]+\.[0-9]+)(`)\s*$/mi',
+        '${1}' . $newVersion . '${3}',
+        $readme,
+        1,
+        $stableReplacements
+    );
+    $readme = preg_replace(
+        '/^(\s*(?:-\s*)?Latest release:\s*`)([0-9]+\.[0-9]+\.[0-9]+)(`)\s*$/mi',
+        '${1}' . $newVersion . '${3}',
+        $readme,
+        1,
+        $latestReplacements
+    );
+
+    if (!is_string($readme)) {
+        fwrite(STDERR, "Failed to update README versions in {$readmeFile}.\n");
+        exit(1);
+    }
+
+    if ($stableReplacements < 1 && $latestReplacements < 1) {
+        fwrite(STDERR, "Failed to locate version markers in {$readmeFile}.\n");
+        exit(1);
+    }
+
+    $written = file_put_contents($readmeFile, $readme);
+    if ($written === false) {
+        fwrite(STDERR, "Unable to write README file: {$readmeFile}\n");
+        exit(1);
+    }
+}
+
 fwrite(STDOUT, "Version updated to {$newVersion}.\n");
