@@ -1056,21 +1056,20 @@ function dashd_render_front_widget($atts) {
 
             const yearsAsc = Array.from(latestIndexByYear.keys()).sort((a, b) => a - b);
             if (!yearsAsc.length) return null;
-            const yearsDesc = [...yearsAsc].sort((a, b) => b - a);
 
             const valuesByCountry = {};
             countries.forEach((country) => {
                 const series = (trendData.indicators[indicatorName] && trendData.indicators[indicatorName][country])
                     ? trendData.indicators[indicatorName][country]
                     : [];
-                valuesByCountry[country] = yearsDesc.map((year) => {
+                valuesByCountry[country] = yearsAsc.map((year) => {
                     const ref = latestIndexByYear.get(year);
                     const raw = ref ? Number(series[ref.idx] ?? 0) : 0;
                     return Number.isFinite(raw) ? raw : 0;
                 });
             });
 
-            return { indicatorName, yearsDesc, countries, valuesByCountry };
+            return { indicatorName, yearsAsc, countries, valuesByCountry };
         };
 
         const renderChart = () => {
@@ -1086,7 +1085,14 @@ function dashd_render_front_widget($atts) {
             
             let maxVal = 0; let y1Max = 0; let useSecondaryAxis = false;
             const isStackedBar = (viewMode === 'bar' && curCty === i18n.allCountries && barStacked);
-            const isBarVertical = (viewMode === 'bar' && barOrientation === 'vertical');
+            const isYearMode = isSingleIndicatorYearMode();
+            const isHorizontalYearLayout = isYearMode && barOrientation === 'horizontal';
+            const barIndexAxis = viewMode === 'bar'
+                ? (isYearMode ? (isHorizontalYearLayout ? 'x' : 'y') : (barOrientation === 'vertical' ? 'x' : 'y'))
+                : 'x';
+            const isBarVertical = (viewMode === 'bar' && barIndexAxis === 'x');
+            const stackedSegmentOrientation = isBarVertical ? 'vertical' : 'horizontal';
+            const reverseCategoryAxis = (viewMode === 'bar' && isYearMode && barOrientation === 'vertical');
 
             if (viewMode === 'line' && trendData) {
                 d.labels = trendData.periods;
@@ -1162,11 +1168,11 @@ function dashd_render_front_widget($atts) {
             } else if (isSingleIndicatorYearMode() && trendData && trendData.indicators) {
                 const annual = buildSingleIndicatorYearData();
                 if (annual) {
-                    d.labels = annual.yearsDesc.map((y) => String(y));
+                    d.labels = annual.yearsAsc.map((y) => String(y));
                     const isStackedYear = (curCty === i18n.allCountries && barStacked);
 
                     if (isStackedYear) {
-                        annual.yearsDesc.forEach((_, yearIdx) => {
+                        annual.yearsAsc.forEach((_, yearIdx) => {
                             let sum = 0;
                             annual.countries.forEach((country) => {
                                 sum += Number(annual.valuesByCountry[country]?.[yearIdx] || 0);
@@ -1179,13 +1185,13 @@ function dashd_render_front_widget($atts) {
                                 label: country,
                                 data: annual.valuesByCountry[country] || [],
                                 backgroundColor: getCountryColor(country, countryIdx),
-                                borderRadius: getStackSegmentRadius(countryIdx, annual.valuesByCountry, annual.countries, barOrientation),
+                                borderRadius: getStackSegmentRadius(countryIdx, annual.valuesByCountry, annual.countries, stackedSegmentOrientation),
                                 borderSkipped: false
                             });
                         });
                     } else if (curCty === i18n.allCountries) {
                         annual.countries.forEach((country, countryIdx) => {
-                            const vals = annual.valuesByCountry[country] || annual.yearsDesc.map(() => 0);
+                            const vals = annual.valuesByCountry[country] || annual.yearsAsc.map(() => 0);
                             vals.forEach((v) => {
                                 if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
                             });
@@ -1200,7 +1206,7 @@ function dashd_render_front_widget($atts) {
                             });
                         });
                     } else {
-                        const vals = annual.valuesByCountry[curCty] || annual.yearsDesc.map(() => 0);
+                        const vals = annual.valuesByCountry[curCty] || annual.yearsAsc.map(() => 0);
                         vals.forEach((v) => {
                             if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
                         });
@@ -1235,7 +1241,7 @@ function dashd_render_front_widget($atts) {
                             label: c,
                             data: vals,
                             backgroundColor: getCountryColor(c, i),
-                            borderRadius: getStackSegmentRadius(i, stackedValuesByCountry, rawData.countries, barOrientation),
+                            borderRadius: getStackSegmentRadius(i, stackedValuesByCountry, rawData.countries, stackedSegmentOrientation),
                             borderSkipped: false
                         });
                     });
@@ -1332,6 +1338,7 @@ function dashd_render_front_widget($atts) {
 
             const categoryAxisConfig = {
                 stacked: isStackedBar,
+                reverse: reverseCategoryAxis,
                 grid: { color: gridColor },
                 ticks: {
                     color: textColor,
@@ -1352,7 +1359,7 @@ function dashd_render_front_widget($atts) {
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    indexAxis: viewMode === 'bar' ? (isBarVertical ? 'x' : 'y') : 'x', 
+                    indexAxis: viewMode === 'bar' ? barIndexAxis : 'x', 
                     animation: { onComplete: hideLoader },
                     color: textColor,
                     plugins: {
@@ -1479,7 +1486,7 @@ function dashd_render_front_widget($atts) {
                 }
 
                 thead.innerHTML = `<th>${escapeHtml(i18n.indicator)}</th>` + annual.countries.map(c => `<th>${escapeHtml(c)}</th>`).join('') + `<th class="dashd-total-col">${escapeHtml(i18n.total)}</th>`;
-                tbody.innerHTML = annual.yearsDesc.map((year, rowIdx) => {
+                tbody.innerHTML = annual.yearsAsc.map((year, rowIdx) => {
                     let rowSum = 0;
                     const cells = annual.countries.map((country) => {
                         const val = Number(annual.valuesByCountry[country]?.[rowIdx] || 0);

@@ -23,6 +23,9 @@ All notable changes to this project are documented in this file.
 - Single-indicator yearly bar mode upgraded:
   - chart now renders by years;
   - yearly value is resolved from the latest available quarter for each year.
+  - years direction is now orientation-aware:
+    - `horizontal`: ascending left-to-right;
+    - `vertical`: ascending bottom-to-top.
 - Bar rendering quality:
   - unified corner rounding strategy bound to bar thickness;
   - `normal` bar mode now applies rounding per each bar;
