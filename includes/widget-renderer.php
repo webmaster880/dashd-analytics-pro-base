@@ -596,6 +596,39 @@ function dashd_render_front_widget($atts) {
             return color;
         };
 
+        const getStackSegmentRadius = (countryIndex, valuesByCountry, countries) => {
+            return (ctx) => {
+                const pointIndex = Number(ctx?.dataIndex ?? -1);
+                if (pointIndex < 0) return 0;
+
+                const country = countries[countryIndex];
+                const current = Number(valuesByCountry[country]?.[pointIndex] ?? 0);
+                if (!Number.isFinite(current) || current === 0) {
+                    return 0;
+                }
+
+                let firstVisible = -1;
+                let lastVisible = -1;
+                for (let i = 0; i < countries.length; i++) {
+                    const cName = countries[i];
+                    const v = Number(valuesByCountry[cName]?.[pointIndex] ?? 0);
+                    if (!Number.isFinite(v) || v === 0) continue;
+                    if (firstVisible === -1) firstVisible = i;
+                    lastVisible = i;
+                }
+
+                if (firstVisible === -1) return 0;
+                if (firstVisible === lastVisible) return 999;
+                if (countryIndex === firstVisible) {
+                    return { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
+                }
+                if (countryIndex === lastVisible) {
+                    return { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
+                }
+                return 0;
+            };
+        };
+
         const getConfiguredIndicatorCount = () => {
             const source = (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length)
                 ? config.indicatorSpecs
@@ -960,20 +993,11 @@ function dashd_render_front_widget($atts) {
                         });
 
                         annual.countries.forEach((country, countryIdx) => {
-                            const totalCountries = annual.countries.length;
-                            let radius = 0;
-                            if (totalCountries <= 1) {
-                                radius = 999;
-                            } else if (countryIdx === 0) {
-                                radius = { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
-                            } else if (countryIdx === totalCountries - 1) {
-                                radius = { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
-                            }
                             d.datasets.push({
                                 label: country,
                                 data: annual.valuesByCountry[country] || [],
                                 backgroundColor: getCountryColor(country, countryIdx),
-                                borderRadius: radius,
+                                borderRadius: getStackSegmentRadius(countryIdx, annual.valuesByCountry, annual.countries),
                                 borderSkipped: false
                             });
                         });
@@ -1002,22 +1026,18 @@ function dashd_render_front_widget($atts) {
                         if (Math.abs(sum) > maxVal) maxVal = Math.abs(sum);
                     });
 
+                    const stackedValuesByCountry = {};
+                    rawData.countries.forEach((countryName) => {
+                        stackedValuesByCountry[countryName] = inds.map((ind) => Number(rawData.indicators[ind]?.[countryName] || 0));
+                    });
+
                     rawData.countries.forEach((c, i) => {
                         const vals = inds.map(ind => rawData.indicators[ind][c] || 0);
-                        const totalCountries = rawData.countries.length;
-                        let radius = 0;
-                        if (totalCountries <= 1) {
-                            radius = 999;
-                        } else if (i === 0) {
-                            radius = { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
-                        } else if (i === totalCountries - 1) {
-                            radius = { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
-                        }
                         d.datasets.push({
                             label: c,
                             data: vals,
                             backgroundColor: getCountryColor(c, i),
-                            borderRadius: radius,
+                            borderRadius: getStackSegmentRadius(i, stackedValuesByCountry, rawData.countries),
                             borderSkipped: false
                         });
                     });

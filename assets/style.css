@@ -94,6 +94,8 @@
     color: #1f2937;
     padding: 6px 18px;
     font-size: 13px;
+    justify-content: center;
+    text-align: center;
 }
 
 .dashd-country-btns .dashd-country-btn.active-btn {
