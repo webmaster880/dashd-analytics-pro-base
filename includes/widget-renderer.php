@@ -527,6 +527,43 @@ function dashd_render_front_widget($atts) {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
+        const countryColorMap = new Map();
+        const hashString = (value) => {
+            const input = String(value ?? '').toLowerCase().trim();
+            let hash = 0;
+            for (let i = 0; i < input.length; i++) {
+                hash = ((hash << 5) - hash) + input.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash);
+        };
+        const getCountryColor = (countryName, fallbackIndex = 0) => {
+            const palette = Array.isArray(config.colors) ? config.colors : [];
+            if (!palette.length) return '#1e87f0';
+
+            const key = String(countryName ?? '').trim();
+            if (key === '') {
+                return (palette[Math.abs(fallbackIndex) % palette.length] || '#1e87f0').trim();
+            }
+            if (countryColorMap.has(key)) {
+                return countryColorMap.get(key);
+            }
+
+            let index = hashString(key) % palette.length;
+            if (palette.length > countryColorMap.size) {
+                const used = new Set(Array.from(countryColorMap.values()));
+                let guard = 0;
+                while (used.has((palette[index] || '').trim()) && guard < palette.length) {
+                    index = (index + 1) % palette.length;
+                    guard++;
+                }
+            }
+
+            const color = (palette[index] || palette[Math.abs(fallbackIndex) % palette.length] || '#1e87f0').trim();
+            countryColorMap.set(key, color);
+            return color;
+        };
+
         const syncDesktopSelectors = () => {
             root.querySelectorAll('.dashd-toggle-view .dashd-selector-label').forEach((el) => {
                 el.classList.toggle('active', el.dataset.type === viewMode);
@@ -799,7 +836,7 @@ function dashd_render_front_widget($atts) {
 
                     rawData.countries.forEach((c, i) => {
                         const vals = inds.map(ind => rawData.indicators[ind][c] || 0);
-                        d.datasets.push({ label: c, data: vals, backgroundColor: config.colors[i % config.colors.length].trim() });
+                        d.datasets.push({ label: c, data: vals, backgroundColor: getCountryColor(c, i) });
                     });
                 } else {
                     const vals = inds.map(i => {
@@ -807,7 +844,10 @@ function dashd_render_front_widget($atts) {
                         if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
                         return v;
                     });
-                    d.datasets.push({ label: curCty, data: vals, backgroundColor: config.colors });
+                    const bgColor = (viewMode === 'bar' && curCty !== i18n.allCountries)
+                        ? getCountryColor(curCty, 0)
+                        : config.colors;
+                    d.datasets.push({ label: curCty, data: vals, backgroundColor: bgColor });
                 }
             }
 
