@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.6
+ * Version: 11.7.7
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.6');
+define('DASHD_VERSION', '11.7.7');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));

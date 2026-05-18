@@ -564,6 +564,15 @@ function dashd_render_front_widget($atts) {
             return color;
         };
 
+        const getConfiguredIndicatorCount = () => {
+            const source = (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length)
+                ? config.indicatorSpecs
+                : (Array.isArray(config.indicatorIds) ? config.indicatorIds : []);
+            return new Set(source.map((v) => String(v ?? '').trim()).filter(Boolean)).size;
+        };
+
+        const isSingleIndicatorYearMode = () => (viewMode === 'bar' && getConfiguredIndicatorCount() === 1);
+
         const syncDesktopSelectors = () => {
             root.querySelectorAll('.dashd-toggle-view .dashd-selector-label').forEach((el) => {
                 el.classList.toggle('active', el.dataset.type === viewMode);
@@ -602,7 +611,7 @@ function dashd_render_front_widget($atts) {
         };
 
         const syncPeriodControlVisibility = () => {
-            const hidePeriods = viewMode === 'line';
+            const hidePeriods = (viewMode === 'line') || isSingleIndicatorYearMode();
             const yearField = controls.mobileYearSelect ? controls.mobileYearSelect.closest('.dashd-mobile-field') : null;
             const quarterField = controls.mobileQuarterSelect ? controls.mobileQuarterSelect.closest('.dashd-mobile-field') : null;
 
@@ -692,7 +701,7 @@ function dashd_render_front_widget($atts) {
             } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
                 url += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
             }
-            if (viewMode === 'line') {
+            if (viewMode === 'line' || isSingleIndicatorYearMode()) {
                 url += '&all=true';
             } else {
                 if (curY && curQ) url += `&year=${curY}&q=${curQ}`;
@@ -705,7 +714,7 @@ function dashd_render_front_widget($atts) {
                 const json = await res.json();
                 
                 if (json.success) {
-                    if (viewMode === 'line') trendData = json.data; else rawData = json.data;
+                    if (viewMode === 'line' || isSingleIndicatorYearMode()) trendData = json.data; else rawData = json.data;
                     if (json.data.year) curY = json.data.year;
                     if (json.data.quarter) curQ = json.data.quarter;
                     syncPeriodButtons();
@@ -735,6 +744,52 @@ function dashd_render_front_widget($atts) {
                 if (trendData.indicators[indName][curCty]) { historyData = trendData.indicators[indName][curCty]; }
             }
             return historyData;
+        };
+
+        const buildSingleIndicatorYearData = () => {
+            if (!trendData || !trendData.periods || !trendData.indicators) return null;
+
+            const indicatorNames = Object.keys(trendData.indicators || {});
+            if (indicatorNames.length !== 1) return null;
+            const indicatorName = indicatorNames[0];
+
+            const countries = Array.isArray(trendData.countries) ? trendData.countries : [];
+            const periods = Array.isArray(trendData.periods) ? trendData.periods : [];
+            if (!countries.length || !periods.length) return null;
+
+            const quarterRank = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 };
+            const latestIndexByYear = new Map();
+            periods.forEach((periodLabel, idx) => {
+                const m = String(periodLabel || '').trim().match(/^(Q[1-4])\s+(\d{4})$/i);
+                if (!m) return;
+                const q = String(m[1] || '').toUpperCase();
+                const year = parseInt(String(m[2] || ''), 10);
+                if (!Number.isFinite(year) || year <= 0) return;
+
+                const rank = quarterRank[q] || 0;
+                const prev = latestIndexByYear.get(year);
+                if (!prev || rank > prev.rank || (rank === prev.rank && idx > prev.idx)) {
+                    latestIndexByYear.set(year, { idx, rank });
+                }
+            });
+
+            const yearsAsc = Array.from(latestIndexByYear.keys()).sort((a, b) => a - b);
+            if (!yearsAsc.length) return null;
+            const yearsDesc = [...yearsAsc].sort((a, b) => b - a);
+
+            const valuesByCountry = {};
+            countries.forEach((country) => {
+                const series = (trendData.indicators[indicatorName] && trendData.indicators[indicatorName][country])
+                    ? trendData.indicators[indicatorName][country]
+                    : [];
+                valuesByCountry[country] = yearsDesc.map((year) => {
+                    const ref = latestIndexByYear.get(year);
+                    const raw = ref ? Number(series[ref.idx] ?? 0) : 0;
+                    return Number.isFinite(raw) ? raw : 0;
+                });
+            });
+
+            return { indicatorName, yearsDesc, countries, valuesByCountry };
         };
 
         const renderChart = () => {
@@ -822,8 +877,41 @@ function dashd_render_front_widget($atts) {
                         yAxisID: onSecondary ? 'y1' : 'y'
                     });
                 });
-            } 
-            else if (rawData && rawData.indicators) {
+            } else if (isSingleIndicatorYearMode() && trendData && trendData.indicators) {
+                const annual = buildSingleIndicatorYearData();
+                if (annual) {
+                    d.labels = annual.yearsDesc.map((y) => String(y));
+                    const isStackedYear = (curCty === i18n.allCountries);
+
+                    if (isStackedYear) {
+                        annual.yearsDesc.forEach((_, yearIdx) => {
+                            let sum = 0;
+                            annual.countries.forEach((country) => {
+                                sum += Number(annual.valuesByCountry[country]?.[yearIdx] || 0);
+                            });
+                            if (Math.abs(sum) > maxVal) maxVal = Math.abs(sum);
+                        });
+
+                        annual.countries.forEach((country, countryIdx) => {
+                            d.datasets.push({
+                                label: country,
+                                data: annual.valuesByCountry[country] || [],
+                                backgroundColor: getCountryColor(country, countryIdx)
+                            });
+                        });
+                    } else {
+                        const vals = annual.valuesByCountry[curCty] || annual.yearsDesc.map(() => 0);
+                        vals.forEach((v) => {
+                            if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+                        });
+                        d.datasets.push({
+                            label: curCty,
+                            data: vals,
+                            backgroundColor: getCountryColor(curCty, 0)
+                        });
+                    }
+                }
+            } else if (rawData && rawData.indicators) {
                 const inds = Object.keys(rawData.indicators);
                 d.labels = inds;
 
@@ -1039,8 +1127,25 @@ function dashd_render_front_widget($atts) {
                     });
                 }, 50);
 
-            } 
-            else if (rawData && rawData.indicators) {
+            } else if (isSingleIndicatorYearMode() && trendData && trendData.indicators) {
+                const annual = buildSingleIndicatorYearData();
+                if (!annual) {
+                    thead.innerHTML = '';
+                    tbody.innerHTML = '';
+                    return;
+                }
+
+                thead.innerHTML = `<th>${escapeHtml(i18n.indicator)}</th>` + annual.countries.map(c => `<th>${escapeHtml(c)}</th>`).join('') + `<th class="dashd-total-col">${escapeHtml(i18n.total)}</th>`;
+                tbody.innerHTML = annual.yearsDesc.map((year, rowIdx) => {
+                    let rowSum = 0;
+                    const cells = annual.countries.map((country) => {
+                        const val = Number(annual.valuesByCountry[country]?.[rowIdx] || 0);
+                        rowSum += val;
+                        return `<td><div style="font-size:13px;">${formatNum(val)}</div></td>`;
+                    }).join('');
+                    return `<tr><td><strong>${escapeHtml(String(year))}</strong></td>${cells}<td class="dashd-total-col">${formatNum(rowSum)}</td></tr>`;
+                }).join('');
+            } else if (rawData && rawData.indicators) {
                 thead.innerHTML = `<th>${escapeHtml(i18n.indicator)}</th>` + rawData.countries.map(c => `<th>${escapeHtml(c)}</th>`).join('') + `<th class="dashd-total-col">${escapeHtml(i18n.total)}</th>`;
                 tbody.innerHTML = Object.keys(rawData.indicators).map(ind => {
                     let rowSum = 0;
@@ -1069,7 +1174,11 @@ function dashd_render_front_widget($atts) {
             syncPeriodControlVisibility();
             syncMobileSelectors();
             const cBox = root.querySelector('.dashd-country-btns'); let cList = [];
-            if (viewMode === 'line' && trendData && trendData.countries) cList = trendData.countries; else if (viewMode !== 'line' && rawData && rawData.countries) cList = rawData.countries;
+            if ((viewMode === 'line' || isSingleIndicatorYearMode()) && trendData && trendData.countries) {
+                cList = trendData.countries;
+            } else if (viewMode !== 'line' && rawData && rawData.countries) {
+                cList = rawData.countries;
+            }
             if (cBox && cList.length > 0) {
                 cBox.style.display = 'flex';
                 cBox.innerHTML = `<button class="dashd-ui-btn ${curCty===i18n.allCountries?'active-btn':''}">${escapeHtml(i18n.allCountries)}</button>`;
