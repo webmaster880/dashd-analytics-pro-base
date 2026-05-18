@@ -400,6 +400,8 @@ function dashd_render_front_widget($atts) {
         </div>
         <?php endif; ?>
         
+        <div class="dashd-country-btns uk-margin-small-bottom uk-flex uk-flex-wrap" style="gap:5px;"></div>
+
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
             <h3 class="uk-h4 uk-margin-remove dashd-widget-title" data-default-title="<?php echo esc_attr(__('Analytics Overview', 'dashd-analytics-pro')); ?>"><?php esc_html_e('Analytics Overview', 'dashd-analytics-pro'); ?></h3>
             <div class="uk-flex uk-flex-column dashd-controls-stack" style="align-items: flex-end; gap: 10px;">
@@ -445,8 +447,6 @@ function dashd_render_front_widget($atts) {
                 </div>
             </div>
         </div>
-
-        <div class="dashd-country-btns uk-margin-small-bottom uk-flex uk-flex-wrap" style="gap:5px;"></div>
 
         <div class="dashd-chart-box" style="height:<?php echo esc_attr($height); ?>; background:#fff; padding:15px; border-radius:8px; border:1px solid #f0f0f0; position:relative; overflow: hidden;">
             <div class="dashd-loader-overlay" style="display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 10; align-items: center; justify-content: center; backdrop-filter: blur(2px); transition: opacity 0.3s ease;">
@@ -960,10 +960,21 @@ function dashd_render_front_widget($atts) {
                         });
 
                         annual.countries.forEach((country, countryIdx) => {
+                            const totalCountries = annual.countries.length;
+                            let radius = 0;
+                            if (totalCountries <= 1) {
+                                radius = 999;
+                            } else if (countryIdx === 0) {
+                                radius = { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
+                            } else if (countryIdx === totalCountries - 1) {
+                                radius = { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
+                            }
                             d.datasets.push({
                                 label: country,
                                 data: annual.valuesByCountry[country] || [],
-                                backgroundColor: getCountryColor(country, countryIdx)
+                                backgroundColor: getCountryColor(country, countryIdx),
+                                borderRadius: radius,
+                                borderSkipped: false
                             });
                         });
                     } else {
@@ -974,7 +985,9 @@ function dashd_render_front_widget($atts) {
                         d.datasets.push({
                             label: curCty,
                             data: vals,
-                            backgroundColor: getCountryColor(curCty, 0)
+                            backgroundColor: getCountryColor(curCty, 0),
+                            borderRadius: 999,
+                            borderSkipped: false
                         });
                     }
                 }
@@ -991,7 +1004,22 @@ function dashd_render_front_widget($atts) {
 
                     rawData.countries.forEach((c, i) => {
                         const vals = inds.map(ind => rawData.indicators[ind][c] || 0);
-                        d.datasets.push({ label: c, data: vals, backgroundColor: getCountryColor(c, i) });
+                        const totalCountries = rawData.countries.length;
+                        let radius = 0;
+                        if (totalCountries <= 1) {
+                            radius = 999;
+                        } else if (i === 0) {
+                            radius = { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
+                        } else if (i === totalCountries - 1) {
+                            radius = { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
+                        }
+                        d.datasets.push({
+                            label: c,
+                            data: vals,
+                            backgroundColor: getCountryColor(c, i),
+                            borderRadius: radius,
+                            borderSkipped: false
+                        });
                     });
                 } else {
                     const vals = inds.map(i => {
@@ -1002,7 +1030,12 @@ function dashd_render_front_widget($atts) {
                     const bgColor = (viewMode === 'bar' && curCty !== i18n.allCountries)
                         ? getCountryColor(curCty, 0)
                         : config.colors;
-                    d.datasets.push({ label: curCty, data: vals, backgroundColor: bgColor });
+                    const barDataset = { label: curCty, data: vals, backgroundColor: bgColor };
+                    if (viewMode === 'bar') {
+                        barDataset.borderRadius = 999;
+                        barDataset.borderSkipped = false;
+                    }
+                    d.datasets.push(barDataset);
                 }
             }
 
@@ -1249,8 +1282,8 @@ function dashd_render_front_widget($atts) {
             }
             if (cBox && cList.length > 0) {
                 cBox.style.display = 'flex';
-                cBox.innerHTML = `<button class="dashd-ui-btn ${curCty===i18n.allCountries?'active-btn':''}">${escapeHtml(i18n.allCountries)}</button>`;
-                cList.forEach(c => { cBox.innerHTML += `<button class="dashd-ui-btn ${curCty===c?'active-btn':''}">${escapeHtml(c)}</button>`; });
+                cBox.innerHTML = `<button class="dashd-ui-btn dashd-country-btn ${curCty===i18n.allCountries?'active-btn':''}">${escapeHtml(i18n.allCountries)}</button>`;
+                cList.forEach(c => { cBox.innerHTML += `<button class="dashd-ui-btn dashd-country-btn ${curCty===c?'active-btn':''}">${escapeHtml(c)}</button>`; });
                 cBox.querySelectorAll('button').forEach(b => {
                     b.onclick = () => { curCty = b.innerText; cBox.querySelectorAll('button').forEach(x => x.classList.remove('active-btn')); b.classList.add('active-btn'); renderChart(); renderTable(); };
                 });
