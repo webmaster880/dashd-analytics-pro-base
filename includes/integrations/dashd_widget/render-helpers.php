@@ -166,6 +166,33 @@ if (!function_exists('dashd_yootheme_extract_custom_palette')) {
     }
 }
 
+if (!function_exists('dashd_yootheme_normalize_country_order')) {
+    /**
+     * Normalize comma/newline separated country names.
+     */
+    function dashd_yootheme_normalize_country_order($value) {
+        $value = is_scalar($value) ? (string) $value : '';
+        $parts = preg_split('/[,\n;]+/', $value, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($parts)) {
+            return '';
+        }
+
+        $items = [];
+        foreach ($parts as $part) {
+            $name = trim(strip_tags((string) $part));
+            if ($name === '') {
+                continue;
+            }
+            $items[$name] = $name;
+            if (count($items) >= 100) {
+                break;
+            }
+        }
+
+        return implode(', ', array_values($items));
+    }
+}
+
 if (!function_exists('dashd_yootheme_normalize_widget_props')) {
     /**
      * Return strictly validated widget props used for shortcode rendering.
@@ -208,12 +235,13 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $bar_orientation = dashd_yootheme_normalize_bar_orientation($props['bar_orientation'] ?? 'horizontal');
         $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
 
-        $preset = dashd_yootheme_normalize_palette($props['colors'] ?? '#E5D6FF, #E3F263, #336DFF, #8B5CF6, #58595B');
+        $preset = dashd_yootheme_normalize_palette($props['colors'] ?? '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7');
         $custom = dashd_yootheme_extract_custom_palette($props);
         $colors = $custom !== '' ? $custom : $preset;
         if ($colors === '') {
-            $colors = '#E5D6FF, #E3F263, #336DFF, #8B5CF6, #58595B';
+            $colors = '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7';
         }
+        $country_order = dashd_yootheme_normalize_country_order($props['country_order'] ?? '');
 
         return [
             'table' => $table,
@@ -226,6 +254,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'show_periods' => $show_periods,
             'bar_orientation' => $bar_orientation,
             'bar_stacked' => $bar_stacked,
+            'country_order' => $country_order,
             'colors' => $colors,
         ];
     }
@@ -239,7 +268,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" bar_orientation="%s" bar_stacked="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" bar_orientation="%s" bar_stacked="%s" country_order="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -250,6 +279,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['show_periods'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['bar_orientation'] ?? 'horizontal'),
             dashd_yootheme_escape_attr($normalized['bar_stacked'] ?? 'true'),
+            dashd_yootheme_escape_attr($normalized['country_order'] ?? ''),
             dashd_yootheme_escape_attr($normalized['colors'] ?? '')
         );
     }

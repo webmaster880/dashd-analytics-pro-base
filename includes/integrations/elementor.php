@@ -185,10 +185,17 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'default' => 'true',
                 ]);
 
+                $this->add_control('country_order', [
+                    'label' => __('Country Display Order', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::TEXT,
+                    'default' => '',
+                    'description' => __('Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).', 'dashd-analytics-pro'),
+                ]);
+
                 $this->add_control('colors', [
                     'label' => __('Color Palette (HEX comma separated)', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::TEXT,
-                    'default' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B',
+                    'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7',
                 ]);
 
                 $this->end_controls_section();
@@ -239,6 +246,7 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     $bar_orientation = 'horizontal';
                 }
                 $bar_stacked = (!empty($settings['bar_stacked']) && (string) $settings['bar_stacked'] === 'true') ? 'true' : 'false';
+                $country_order = self::sanitize_country_order((string) ($settings['country_order'] ?? ''));
 
                 $gated = (!empty($settings['gated']) && (string) $settings['gated'] === 'true') ? 'true' : 'false';
                 $show_view_toggle = (!empty($settings['show_view_toggle']) && (string) $settings['show_view_toggle'] === 'true') ? 'true' : 'false';
@@ -247,14 +255,14 @@ add_action('elementor/widgets/register', function($widgets_manager) {
 
                 $colors = self::sanitize_palette((string) ($settings['colors'] ?? ''));
                 if ($colors === '') {
-                    $colors = '#E5D6FF, #E3F263, #336DFF, #8B5CF6, #58595B';
+                    $colors = '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7';
                 }
                 $shortcode = '[dashd_widget ';
                 if ($indicators_csv !== '') {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
                 $shortcode .= sprintf(
-                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" colors="%s"]',
+                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" country_order="%s" colors="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
@@ -264,9 +272,32 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     esc_attr($show_view_toggle),
                     esc_attr($show_scale_toggle),
                     esc_attr($show_periods),
+                    esc_attr($country_order),
                     esc_attr($colors)
                 );
                 echo do_shortcode($shortcode);
+            }
+
+            protected static function sanitize_country_order($raw) {
+                $raw = is_scalar($raw) ? (string) $raw : '';
+                $items = preg_split('/[,\n;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
+                if (!is_array($items)) {
+                    return '';
+                }
+
+                $out = [];
+                foreach ($items as $item) {
+                    $name = trim(wp_strip_all_tags((string) $item));
+                    if ($name === '') {
+                        continue;
+                    }
+                    $out[$name] = $name;
+                    if (count($out) >= 100) {
+                        break;
+                    }
+                }
+
+                return implode(', ', array_values($out));
             }
         }
     }

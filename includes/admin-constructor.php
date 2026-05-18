@@ -21,8 +21,9 @@ function dashd_admin_constructor_page() {
         'emerald' => ['label' => __('Emerald Nature', 'dashd-analytics-pro'),    'colors' => ['#10b981','#34d399','#6ee7b7','#a7f3d0','#064e3b']],
         'sunset'  => ['label' => __('Sunset Warmth', 'dashd-analytics-pro'),     'colors' => ['#f59e0b','#fbbf24','#fcd34d','#fde68a','#78350f']],
         'vibrant' => ['label' => __('Vibrant Mix', 'dashd-analytics-pro'),       'colors' => ['#ec4899','#8b5cf6','#3b82f6','#10b981','#f59e0b']],
-        'ebrd'    => ['label' => __('EBRD New Corporate', 'dashd-analytics-pro'),'colors' => ['#E5D6FF','#E3F263','#336DFF','#8b5cf6','#58595B']]
+        'dashd_default' => ['label' => __('DashD Default', 'dashd-analytics-pro'),'colors' => ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7']]
     ];
+    $default_palette = ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7'];
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Widget Constructor', 'dashd-analytics-pro'); ?> <span class="dashd-badge">v<?php echo esc_html((string) DASHD_VERSION); ?></span></h1>
@@ -84,6 +85,14 @@ function dashd_admin_constructor_page() {
                 </div>
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Country Display Order (optional):', 'dashd-analytics-pro'); ?></label>
+                    <input id="c_country_order" class="uk-input" type="text" value="Ukraine, Moldova, Georgia, Armenia">
+                    <p style="font-size: 11px; color: #646970; margin-top: 5px;">
+                        <?php esc_html_e('Comma-separated country names. Example: Ukraine, Moldova, Georgia, Armenia. Unlisted countries will be shown after listed ones.', 'dashd-analytics-pro'); ?>
+                    </p>
+                </div>
+
+                <div class="uk-margin" style="margin-bottom: 15px;">
                     <label style="font-weight: 600; display: block; margin-bottom: 8px;"><?php esc_html_e('Controls Visibility:', 'dashd-analytics-pro'); ?></label>
                     <label style="display:block; margin-bottom:6px;">
                         <input type="checkbox" id="c_show_view_toggle" checked>
@@ -113,7 +122,7 @@ function dashd_admin_constructor_page() {
                     <div id="color_pickers" style="display:flex; justify-content:space-between; gap:5px; margin-top:10px;">
                         <?php for($i=1; $i<=5; $i++): ?>
                             <div style="text-align:center;">
-                                <input type="color" id="clr_<?php echo (int) $i; ?>" class="color-dot" value="#58595B" style="width:45px; height:45px; border:none; cursor:pointer; background:none;">
+                                <input type="color" id="clr_<?php echo (int) $i; ?>" class="color-dot" value="<?php echo esc_attr($default_palette[$i - 1] ?? '#336DFF'); ?>" style="width:45px; height:45px; border:none; cursor:pointer; background:none;">
                                 <div style="font-size:9px; color:#646970; margin-top:4px;">#<?php echo (int) $i; ?></div>
                             </div>
                         <?php endfor; ?>
@@ -177,6 +186,7 @@ function dashd_admin_constructor_page() {
             const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
             const barOrientation = document.getElementById('c_bar_orientation').value;
             const barStacked = document.getElementById('c_bar_stacked').value;
+            const countryOrder = String(document.getElementById('c_country_order').value || '').trim().replace(/"/g, "'");
             
             let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
@@ -185,6 +195,9 @@ function dashd_admin_constructor_page() {
             shortcode += ` show_periods="${showPeriods}"`;
             shortcode += ` bar_orientation="${barOrientation}"`;
             shortcode += ` bar_stacked="${barStacked}"`;
+            if (countryOrder !== '') {
+                shortcode += ` country_order="${countryOrder}"`;
+            }
             shortcode += `]`;
             
             document.getElementById('res_sc').value = shortcode; 
@@ -227,7 +240,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_bar_orientation', 'c_bar_stacked'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_bar_orientation', 'c_bar_stacked', 'c_country_order'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;

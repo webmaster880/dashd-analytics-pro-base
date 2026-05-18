@@ -45,7 +45,7 @@ if (empty($indicator_options)) {
 }
 
 $color_presets = [
-    'DashD Default' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B',
+    'DashD Default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7',
     'EBRD Blue Theme' => '#03045E, #0077B6, #00B4D8, #90E0EF, #CAF0F8',
     'Sunset Fire' => '#FF7B00, #FF9500, #FFAA00, #FFC300, #FFDD00',
     'Eco Greens' => '#2D6A4F, #40916C, #52B788, #74C69D, #95D5B2',
@@ -122,6 +122,12 @@ return [
             'type' => 'checkbox',
             'text' => 'Show Year / Quarter',
             'default' => true,
+        ],
+        'country_order' => [
+            'label' => 'Country Display Order',
+            'type' => 'text',
+            'description' => 'Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).',
+            'source' => true,
         ],
         'colors' => [
             'label' => 'Color Palette',
@@ -313,6 +319,7 @@ return [
                         'show_view_toggle',
                         'show_scale_toggle',
                         'show_periods',
+                        'country_order',
                         'colors',
                         [
                             'label' => 'Custom Color Palette',

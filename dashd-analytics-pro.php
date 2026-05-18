@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.14
+ * Version: 11.7.15
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.14');
+define('DASHD_VERSION', '11.7.15');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));
@@ -667,6 +667,18 @@ add_action('wp_ajax_dashd_render_preview', function() {
         $bar_orientation = 'horizontal';
     }
     $bar_stacked = $bool_like($parsed_atts['bar_stacked'] ?? 'true', true) ? 'true' : 'false';
+    $country_order = [];
+    foreach (preg_split('/[,\n;]+/', (string) ($parsed_atts['country_order'] ?? '')) ?: [] as $country_name) {
+        $country_name = trim(wp_strip_all_tags((string) $country_name));
+        if ($country_name === '') {
+            continue;
+        }
+        $country_order[$country_name] = $country_name;
+        if (count($country_order) >= 100) {
+            break;
+        }
+    }
+    $country_order = implode(', ', array_values($country_order));
 
     $safe_colors = [];
     $colors_raw = is_scalar($parsed_atts['colors'] ?? '') ? (string) $parsed_atts['colors'] : '';
@@ -676,7 +688,7 @@ add_action('wp_ajax_dashd_render_preview', function() {
         }
     }
     if (empty($safe_colors)) {
-        $safe_colors = ['#E5D6FF', '#E3F263', '#336DFF', '#8B5CF6', '#58595B'];
+        $safe_colors = ['#336DFF', '#AF9BE2', '#3B82F6', '#BEE00F', '#7FD3F7'];
     }
 
     $preview_atts = [
@@ -690,6 +702,7 @@ add_action('wp_ajax_dashd_render_preview', function() {
         'show_periods' => $show_periods,
         'bar_orientation' => $bar_orientation,
         'bar_stacked' => $bar_stacked,
+        'country_order' => $country_order,
         'colors' => implode(', ', $safe_colors),
     ];
 

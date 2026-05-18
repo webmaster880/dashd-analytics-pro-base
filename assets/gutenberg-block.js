@@ -100,6 +100,12 @@
                             onChange: (val) => setAttributes({ show_periods: val ? 'true' : 'false' })
                         }),
                         el(TextControl, {
+                            label: 'Country Display Order',
+                            value: attributes.country_order || '',
+                            help: 'Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).',
+                            onChange: (val) => setAttributes({ country_order: val })
+                        }),
+                        el(TextControl, {
                             label: 'Colors (comma separated HEX)',
                             value: attributes.colors,
                             onChange: (val) => setAttributes({ colors: val })

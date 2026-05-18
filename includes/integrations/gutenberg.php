@@ -19,7 +19,8 @@ add_action('init', function() {
             'show_view_toggle' => ['type' => 'string', 'default' => 'true'],
             'show_scale_toggle' => ['type' => 'string', 'default' => 'true'],
             'show_periods' => ['type' => 'string', 'default' => 'true'],
-            'colors'   => ['type' => 'string', 'default' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B']
+            'country_order' => ['type' => 'string', 'default' => ''],
+            'colors'   => ['type' => 'string', 'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7']
         ]
     ]);
 });

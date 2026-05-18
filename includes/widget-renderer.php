@@ -208,7 +208,7 @@ function dashd_render_front_widget($atts) {
         'indicators' => '',
         'mode'   => 'bar',
         'scale'  => 'linear',
-        'colors' => '#E5D6FF, #E3F263, #336DFF, #8b5cf6, #58595B',
+        'colors' => '#336dff,#af9be2,#3b82f6,#bee00f,#7fd3f7',
         'weight' => '3',
         'height' => '420px',
         'gated'  => 'false',
@@ -217,9 +217,10 @@ function dashd_render_front_widget($atts) {
         'show_periods' => 'true',
         'bar_orientation' => 'horizontal',
         'bar_stacked' => 'true',
+        'country_order' => '',
     ], $atts);
 
-    $default_colors = ['#E5D6FF', '#E3F263', '#336DFF', '#8b5cf6', '#58595B'];
+    $default_colors = ['#336DFF', '#AF9BE2', '#3B82F6', '#BEE00F', '#7FD3F7'];
 
     $table = function_exists('dashd_normalize_source_key')
         ? dashd_normalize_source_key((string) $a['table'])
@@ -318,6 +319,19 @@ function dashd_render_front_widget($atts) {
         $colors = $default_colors;
     }
 
+    $country_order = [];
+    foreach (preg_split('/[,\n;]+/', (string) ($a['country_order'] ?? '')) ?: [] as $country_name) {
+        $country_name = trim(wp_strip_all_tags((string) $country_name));
+        if ($country_name === '') {
+            continue;
+        }
+        $country_order[$country_name] = $country_name;
+        if (count($country_order) >= 100) {
+            break;
+        }
+    }
+    $country_order = array_values($country_order);
+
     // Умная проверка и подключение локальных скриптов
     // Проверяем самые частые названия (handles), под которыми другие плагины могли загрузить Chart.js
     if (!wp_script_is('chart.js', 'enqueued') && !wp_script_is('chart-js', 'enqueued') && !wp_script_is('chartjs', 'enqueued') && !wp_script_is('chart', 'enqueued')) {
@@ -358,6 +372,7 @@ function dashd_render_front_widget($atts) {
         'showBarControlsUI' => $show_bar_controls_ui,
         'barOrientation' => $bar_orientation,
         'barStacked' => $bar_stacked,
+        'countryOrder' => $country_order,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
     ];
 
@@ -602,6 +617,35 @@ function dashd_render_front_widget($atts) {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
+        const normalizeCountryName = (value) => String(value ?? '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const preferredCountryOrder = Array.isArray(config.countryOrder)
+            ? config.countryOrder.map((name) => String(name ?? '').trim()).filter(Boolean)
+            : [];
+        const preferredCountryOrderMap = new Map(
+            preferredCountryOrder.map((name, index) => [normalizeCountryName(name), index])
+        );
+
+        const sortCountriesByPreference = (countries) => {
+            if (!Array.isArray(countries)) return [];
+            if (!preferredCountryOrderMap.size) return countries.slice();
+
+            return countries.slice().sort((a, b) => {
+                const nameA = String(a ?? '');
+                const nameB = String(b ?? '');
+                const keyA = normalizeCountryName(nameA);
+                const keyB = normalizeCountryName(nameB);
+                const posA = preferredCountryOrderMap.has(keyA) ? preferredCountryOrderMap.get(keyA) : Number.POSITIVE_INFINITY;
+                const posB = preferredCountryOrderMap.has(keyB) ? preferredCountryOrderMap.get(keyB) : Number.POSITIVE_INFINITY;
+
+                if (posA !== posB) return posA - posB;
+                return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+            });
+        };
+
         const countryColorMap = new Map();
         const hashString = (value) => {
             const input = String(value ?? '').toLowerCase().trim();
@@ -639,6 +683,55 @@ function dashd_render_front_widget($atts) {
             return color;
         };
 
+        const BAR_RADIUS_BY_WIDTH_RATIO = 0.4;
+        const BAR_RADIUS_MIN = 2;
+        const BAR_RADIUS_MAX = 14;
+        const GROUPED_CATEGORY_PERCENTAGE = 0.74;
+        const GROUPED_BAR_PERCENTAGE = 0.86;
+
+        const getAdaptiveBarRadius = (ctx) => {
+            const chart = ctx?.chart;
+            const datasetIndex = Number(ctx?.datasetIndex ?? -1);
+            const dataIndex = Number(ctx?.dataIndex ?? -1);
+            if (!chart || datasetIndex < 0 || dataIndex < 0) {
+                return BAR_RADIUS_MIN;
+            }
+
+            const meta = chart.getDatasetMeta(datasetIndex);
+            const element = meta?.data?.[dataIndex];
+            if (!element) {
+                return BAR_RADIUS_MIN;
+            }
+
+            // Bind radius to the bar width (column thickness), not value length.
+            const indexAxis = String(chart?.options?.indexAxis || 'x');
+            const explicitWidth = indexAxis === 'y' ? Number(element.height) : Number(element.width);
+            const fallbackWidth = Math.min(
+                Number.isFinite(Number(element.width)) ? Number(element.width) : Number.POSITIVE_INFINITY,
+                Number.isFinite(Number(element.height)) ? Number(element.height) : Number.POSITIVE_INFINITY
+            );
+            const barWidth = Number.isFinite(explicitWidth) && explicitWidth > 0
+                ? explicitWidth
+                : (Number.isFinite(fallbackWidth) && fallbackWidth > 0 ? fallbackWidth : 0);
+
+            if (!barWidth) {
+                return BAR_RADIUS_MIN;
+            }
+
+            const radius = barWidth * BAR_RADIUS_BY_WIDTH_RATIO;
+            return Math.max(BAR_RADIUS_MIN, Math.min(BAR_RADIUS_MAX, radius));
+        };
+
+        const getFullBarRadius = () => {
+            return (ctx) => {
+                const value = Number(ctx?.raw ?? 0);
+                if (!Number.isFinite(value) || value === 0) {
+                    return 0;
+                }
+                return getAdaptiveBarRadius(ctx);
+            };
+        };
+
         const getStackSegmentRadius = (countryIndex, valuesByCountry, countries, orientation = 'horizontal') => {
             return (ctx) => {
                 const pointIndex = Number(ctx?.dataIndex ?? -1);
@@ -661,16 +754,17 @@ function dashd_render_front_widget($atts) {
                 }
 
                 if (firstVisible === -1) return 0;
-                if (firstVisible === lastVisible) return 999;
+                const radius = getAdaptiveBarRadius(ctx);
+                if (firstVisible === lastVisible) return radius;
                 if (countryIndex === firstVisible) {
                     return orientation === 'vertical'
-                        ? { topLeft: 0, bottomLeft: 999, topRight: 0, bottomRight: 999 }
-                        : { topLeft: 999, bottomLeft: 999, topRight: 0, bottomRight: 0 };
+                        ? { topLeft: 0, bottomLeft: radius, topRight: 0, bottomRight: radius }
+                        : { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 };
                 }
                 if (countryIndex === lastVisible) {
                     return orientation === 'vertical'
-                        ? { topLeft: 999, bottomLeft: 0, topRight: 999, bottomRight: 0 }
-                        : { topLeft: 0, bottomLeft: 0, topRight: 999, bottomRight: 999 };
+                        ? { topLeft: radius, bottomLeft: 0, topRight: radius, bottomRight: 0 }
+                        : { topLeft: 0, bottomLeft: 0, topRight: radius, bottomRight: radius };
                 }
                 return 0;
             };
@@ -898,6 +992,9 @@ function dashd_render_front_widget($atts) {
                 const json = await res.json();
                 
                 if (json.success) {
+                    if (json.data && Array.isArray(json.data.countries)) {
+                        json.data.countries = sortCountriesByPreference(json.data.countries);
+                    }
                     if (viewMode === 'line' || isSingleIndicatorYearMode()) trendData = json.data; else rawData = json.data;
                     if (json.data.year) curY = json.data.year;
                     if (json.data.quarter) curQ = json.data.quarter;
@@ -1066,7 +1163,7 @@ function dashd_render_front_widget($atts) {
                 const annual = buildSingleIndicatorYearData();
                 if (annual) {
                     d.labels = annual.yearsDesc.map((y) => String(y));
-                    const isStackedYear = (curCty === i18n.allCountries);
+                    const isStackedYear = (curCty === i18n.allCountries && barStacked);
 
                     if (isStackedYear) {
                         annual.yearsDesc.forEach((_, yearIdx) => {
@@ -1086,6 +1183,22 @@ function dashd_render_front_widget($atts) {
                                 borderSkipped: false
                             });
                         });
+                    } else if (curCty === i18n.allCountries) {
+                        annual.countries.forEach((country, countryIdx) => {
+                            const vals = annual.valuesByCountry[country] || annual.yearsDesc.map(() => 0);
+                            vals.forEach((v) => {
+                                if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+                            });
+                            d.datasets.push({
+                                label: country,
+                                data: vals,
+                                backgroundColor: getCountryColor(country, countryIdx),
+                                borderRadius: getFullBarRadius(),
+                                borderSkipped: false,
+                                categoryPercentage: GROUPED_CATEGORY_PERCENTAGE,
+                                barPercentage: GROUPED_BAR_PERCENTAGE
+                            });
+                        });
                     } else {
                         const vals = annual.valuesByCountry[curCty] || annual.yearsDesc.map(() => 0);
                         vals.forEach((v) => {
@@ -1095,7 +1208,7 @@ function dashd_render_front_widget($atts) {
                             label: curCty,
                             data: vals,
                             backgroundColor: getCountryColor(curCty, 0),
-                            borderRadius: 999,
+                            borderRadius: getFullBarRadius(),
                             borderSkipped: false
                         });
                     }
@@ -1127,20 +1240,41 @@ function dashd_render_front_widget($atts) {
                         });
                     });
                 } else {
-                    const vals = inds.map(i => {
-                        const v = curCty === i18n.allCountries ? Object.values(rawData.indicators[i]).reduce((a,b)=>a+b,0) : (rawData.indicators[i][curCty]||0);
-                        if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
-                        return v;
-                    });
-                    const bgColor = (viewMode === 'bar' && curCty !== i18n.allCountries)
-                        ? getCountryColor(curCty, 0)
-                        : config.colors;
-                    const barDataset = { label: curCty, data: vals, backgroundColor: bgColor };
-                    if (viewMode === 'bar') {
-                        barDataset.borderRadius = 999;
-                        barDataset.borderSkipped = false;
+                    const isGroupedCountryBars = (viewMode === 'bar' && curCty === i18n.allCountries);
+                    if (isGroupedCountryBars) {
+                        rawData.countries.forEach((country, countryIdx) => {
+                            const vals = inds.map((ind) => Number(rawData.indicators[ind]?.[country] || 0));
+                            vals.forEach((v) => {
+                                if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+                            });
+                            d.datasets.push({
+                                label: country,
+                                data: vals,
+                                backgroundColor: getCountryColor(country, countryIdx),
+                                borderRadius: getFullBarRadius(),
+                                borderSkipped: false,
+                                categoryPercentage: GROUPED_CATEGORY_PERCENTAGE,
+                                barPercentage: GROUPED_BAR_PERCENTAGE
+                            });
+                        });
+                    } else {
+                        const vals = inds.map((i) => {
+                            const v = curCty === i18n.allCountries
+                                ? Object.values(rawData.indicators[i]).reduce((a, b) => a + b, 0)
+                                : (rawData.indicators[i][curCty] || 0);
+                            if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+                            return v;
+                        });
+                        const bgColor = (viewMode === 'bar' && curCty !== i18n.allCountries)
+                            ? getCountryColor(curCty, 0)
+                            : config.colors;
+                        const barDataset = { label: curCty, data: vals, backgroundColor: bgColor };
+                        if (viewMode === 'bar') {
+                            barDataset.borderRadius = getFullBarRadius();
+                            barDataset.borderSkipped = false;
+                        }
+                        d.datasets.push(barDataset);
                     }
-                    d.datasets.push(barDataset);
                 }
             }
 
