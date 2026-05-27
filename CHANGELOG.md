@@ -32,6 +32,7 @@ All notable changes to this project are documented in this file.
   - WordPress admin now can show new-version notifications from GitHub Releases;
   - supports private repositories via token (`DASHD_GITHUB_TOKEN`);
   - update metadata and plugin info are injected through native WP update hooks.
+ - `Settings` header now includes `Check updates now` action to force refresh plugin update metadata.
 
 ### Fixed
 - Multi-indicator default period selection:
@@ -39,6 +40,7 @@ All notable changes to this project are documented in this file.
   - default now resolves to the latest actually available quarter of the latest year.
 - Quarter controls stability:
   - quarter buttons/select are now rebuilt per selected year and guarded against unavailable quarter picks.
+- README expanded with step-by-step `DASHD_GITHUB_TOKEN` generation guide (Fine-grained PAT) and public/private repo requirements.
 
 ## [11.7.16] - 2026-05-18
 

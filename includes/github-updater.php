@@ -398,3 +398,58 @@ if (!function_exists('dashd_register_github_updater')) {
         $updater->hooks();
     }
 }
+
+if (!function_exists('dashd_github_updater_cache_key')) {
+    /**
+     * Build cache key for GitHub release metadata.
+     *
+     * @param string $repo
+     * @param string $branch
+     * @return string
+     */
+    function dashd_github_updater_cache_key($repo, $branch = 'main') {
+        $repo = trim((string) $repo);
+        $branch = trim((string) $branch);
+        if ($branch === '') {
+            $branch = 'main';
+        }
+        return 'dashd_gh_release_' . md5($repo . '|' . $branch);
+    }
+}
+
+if (!function_exists('dashd_github_updater_check_now')) {
+    /**
+     * Force update check for plugins table and clear updater caches.
+     *
+     * @return true|WP_Error
+     */
+    function dashd_github_updater_check_now() {
+        $repo = defined('DASHD_GITHUB_REPO') ? (string) DASHD_GITHUB_REPO : '';
+        $repo = trim((string) apply_filters('dashd_github_repo', $repo));
+        if ($repo === '' || preg_match('/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i', $repo) !== 1) {
+            return new WP_Error('dashd_github_repo_invalid', 'Invalid GitHub repository configuration.');
+        }
+
+        $branch = defined('DASHD_GITHUB_BRANCH') ? (string) DASHD_GITHUB_BRANCH : 'main';
+        $branch = trim((string) apply_filters('dashd_github_branch', $branch));
+        if ($branch === '') {
+            $branch = 'main';
+        }
+
+        delete_transient(dashd_github_updater_cache_key($repo, $branch));
+        delete_site_transient('update_plugins');
+        if (function_exists('wp_clean_plugins_cache')) {
+            wp_clean_plugins_cache(true);
+        }
+
+        if (!function_exists('wp_update_plugins')) {
+            require_once ABSPATH . 'wp-includes/update.php';
+        }
+        if (function_exists('wp_update_plugins')) {
+            wp_update_plugins();
+            return true;
+        }
+
+        return new WP_Error('dashd_github_update_unavailable', 'Unable to run WordPress update checker.');
+    }
+}

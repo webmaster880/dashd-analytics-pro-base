@@ -15,6 +15,17 @@ function dashd_admin_settings_page() {
     <div class="wrap">
         <div class="dashd-admin-header">
             <h1><?php esc_html_e('Analytics Pro Settings', 'dashd-analytics-pro'); ?> <span class="dashd-badge">v<?php echo esc_html((string) DASHD_VERSION); ?></span></h1>
+            <div class="dashd-header-actions">
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0;">
+                    <input type="hidden" name="action" value="dashd_check_updates">
+                    <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
+                    <?php wp_nonce_field('dashd_check_updates', 'dashd_check_updates_nonce'); ?>
+                    <button type="submit" class="button button-secondary" style="display:flex; align-items:center; gap:6px;">
+                        <span class="dashicons dashicons-update"></span>
+                        <?php esc_html_e('Check updates now', 'dashd-analytics-pro'); ?>
+                    </button>
+                </form>
+            </div>
         </div>
         
         <?php if (isset($_GET['imported'])): ?>
@@ -49,6 +60,12 @@ function dashd_admin_settings_page() {
         <?php endif; ?>
         <?php if ($status === 'logs_cleared'): ?>
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Sync logs cleared.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'updates_checked'): ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Update check completed. Refresh Plugins/Updates page to see latest status.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'updates_check_failed'): ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Update check failed. Verify GitHub repository settings/token and try again.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
 
         <h2 class="nav-tab-wrapper">
@@ -2426,5 +2443,40 @@ function dashd_handle_import_raw_data() {
     fclose($file);
     if (function_exists('dashd_clear_all_caches')) dashd_clear_all_caches();
     wp_redirect(admin_url("admin.php?page=dashd-settings&tab=sources&imported_raw={$imported_count}"));
+    exit;
+}
+
+add_action('admin_post_dashd_check_updates', 'dashd_handle_check_updates');
+function dashd_handle_check_updates() {
+    if (function_exists('dashd_enforce_http_method')) {
+        dashd_enforce_http_method('POST');
+    }
+
+    if (!current_user_can('manage_options')) {
+        if (function_exists('dashd_forbidden_response')) {
+            dashd_forbidden_response(false);
+        }
+        wp_die(__('Access denied', 'dashd-analytics-pro'));
+    }
+
+    check_admin_referer('dashd_check_updates', 'dashd_check_updates_nonce');
+
+    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'logs'];
+    $tab = isset($_POST['tab']) ? sanitize_key((string) $_POST['tab']) : 'sources';
+    if (!in_array($tab, $allowed_tabs, true)) {
+        $tab = 'sources';
+    }
+
+    $status = 'updates_checked';
+    if (function_exists('dashd_github_updater_check_now')) {
+        $result = dashd_github_updater_check_now();
+        if (is_wp_error($result)) {
+            $status = 'updates_check_failed';
+        }
+    } else {
+        $status = 'updates_check_failed';
+    }
+
+    wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=' . rawurlencode($status)));
     exit;
 }

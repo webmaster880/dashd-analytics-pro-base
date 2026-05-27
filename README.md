@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.8.0`
+- Stable version: `11.8.1`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -204,6 +204,37 @@ Notes:
 - Токен должен иметь как минимум read-доступ к репозиторию (Fine-grained PAT: repository `Contents: Read`).
 - Для корректного auto-update релиз должен содержать ZIP-asset плагина (рекомендуемый формат: `dashd-analytics-pro-vX.Y.Z.zip`).
 
+### How To Create `DASHD_GITHUB_TOKEN` (step-by-step)
+
+1. Open GitHub web UI:
+   - `https://github.com/settings/personal-access-tokens`
+2. Click `Fine-grained tokens` → `Generate new token`.
+3. Set token name (e.g. `dashd-prod-updates`) and expiration.
+4. In `Resource owner`, choose your account/org where the repo lives.
+5. In `Repository access`, select:
+   - `Only select repositories` → choose `dashd-analytics-pro-base`.
+6. In `Permissions`, set:
+   - `Repository permissions` → `Contents: Read`.
+7. Generate token and copy it once (GitHub will not show it again).
+8. Add it to `wp-config.php`:
+
+```php
+define('DASHD_GITHUB_TOKEN', 'github_pat_xxxxxxxxx');
+```
+
+9. In WordPress admin open:
+   - `Analytics Pro → Settings` and click `Check updates now`.
+
+### Is token required for a public repository?
+
+Short answer: **No, not required**, but **recommended**.
+
+- Public repo:
+  - works without token;
+  - may hit stricter GitHub API rate limits.
+- Private repo:
+  - token is required to read release metadata and download package.
+
 ---
 
 ## Release Build
@@ -253,7 +284,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.8.0`
+Latest release: `11.8.1`
 ---
 
 ## Notes
