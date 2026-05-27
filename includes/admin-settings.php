@@ -670,7 +670,7 @@ function dashd_render_sources_tab($sources) {
             </form>
         </div>
         <div class="tablenav-pages">
-            <span class="displaying-num" style="margin-right:10px; font-weight:600;"><?php echo number_format((int) $total_items, 0, '', ' '); ?> <?php esc_html_e('items', 'dashd-analytics-pro'); ?></span>
+            <span id="dashd-raw-items-count" class="displaying-num" data-count="<?php echo (int) $total_items; ?>" data-items-label="<?php echo esc_attr__('items', 'dashd-analytics-pro'); ?>" style="margin-right:10px; font-weight:600;"><?php echo number_format((int) $total_items, 0, '', ' '); ?> <?php esc_html_e('items', 'dashd-analytics-pro'); ?></span>
             <?php
             if ($total_pages > 1) {
                 echo paginate_links([
@@ -746,7 +746,7 @@ function dashd_render_sources_tab($sources) {
                 <?php esc_html_e('Delete Selected', 'dashd-analytics-pro'); ?>
             </button>
         </div>
-        <table class="dashd-table" style="width:100%;">
+        <table id="dashd-raw-table" class="dashd-table" style="width:100%;">
             <thead>
                 <tr>
                     <th style="width:4%; text-align:center;">
@@ -758,7 +758,7 @@ function dashd_render_sources_tab($sources) {
                     <th style="width:25%;"><?php esc_html_e('Value', 'dashd-analytics-pro'); ?></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="dashd-raw-tbody">
                 <?php if($records): foreach($records as $r): ?>
                 <tr data-raw-record-id="<?php echo (int) $r->id; ?>">
                     <td style="text-align:center;">
@@ -782,7 +782,7 @@ function dashd_render_sources_tab($sources) {
                     </td>
                 </tr>
                 <?php endforeach; else: ?>
-                <tr><td colspan="5" style="padding:20px; text-align:center; color:#999;"><?php esc_html_e('No records found for this source.', 'dashd-analytics-pro'); ?></td></tr>
+                <tr class="dashd-raw-empty-row"><td colspan="5" style="padding:20px; text-align:center; color:#999;"><?php esc_html_e('No records found for this source.', 'dashd-analytics-pro'); ?></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -799,11 +799,18 @@ function dashd_render_sources_tab($sources) {
             addMissing: "<?php echo esc_js(__('Please fill all fields for manual entry.', 'dashd-analytics-pro')); ?>",
             addFailed: "<?php echo esc_js(__('Failed to save raw data point.', 'dashd-analytics-pro')); ?>",
             addNet: "<?php echo esc_js(__('Network error during raw data save.', 'dashd-analytics-pro')); ?>",
-            addSaved: "<?php echo esc_js(__('Raw data point saved. Table will be refreshed.', 'dashd-analytics-pro')); ?>"
+            addSavedInserted: "<?php echo esc_js(__('Raw data point added.', 'dashd-analytics-pro')); ?>",
+            addSavedUpdated: "<?php echo esc_js(__('Raw data point updated.', 'dashd-analytics-pro')); ?>",
+            deleteSelected: "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>",
+            itemsLabel: "<?php echo esc_js(__('items', 'dashd-analytics-pro')); ?>",
+            emptyRows: "<?php echo esc_js(__('No records found for this source.', 'dashd-analytics-pro')); ?>"
         };
+
         const updateValueNonce = "<?php echo esc_js(wp_create_nonce('dashd_update_raw_value')); ?>";
         const deleteRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_delete_raw_records')); ?>";
         const addRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_add_raw_record')); ?>";
+        const sourceKey = "<?php echo esc_js($src_filter); ?>";
+
         const addRawIndicator = document.getElementById('dashd-add-raw-indicator');
         const addRawCountry = document.getElementById('dashd-add-raw-country');
         const addRawYear = document.getElementById('dashd-add-raw-year');
@@ -812,25 +819,85 @@ function dashd_render_sources_tab($sources) {
         const addRawSubmit = document.getElementById('dashd-add-raw-submit');
         const bulkDeleteBtn = document.getElementById('dashd-delete-selected-raw');
         const selectAll = document.getElementById('dashd-raw-select-all');
+        const rawItemsCountEl = document.getElementById('dashd-raw-items-count');
+        const rawTbody = document.getElementById('dashd-raw-tbody');
 
-        const getSelectedRawIds = () => Array.from(document.querySelectorAll('.dashd-raw-select:checked'))
-            .map((el) => parseInt(el.value, 10))
-            .filter((id) => Number.isInteger(id) && id > 0);
+        const escapeHtml = function(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
 
-        const updateBulkUiState = () => {
+        const formatCount = function(value) {
+            return String(Math.max(0, parseInt(value, 10) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        };
+
+        const getRowCheckboxes = function() {
+            return rawTbody ? rawTbody.querySelectorAll('.dashd-raw-select') : [];
+        };
+
+        const getSelectedRawIds = function() {
+            return Array.from(rawTbody ? rawTbody.querySelectorAll('.dashd-raw-select:checked') : [])
+                .map(function(el) { return parseInt(el.value, 10); })
+                .filter(function(id) { return Number.isInteger(id) && id > 0; });
+        };
+
+        const getVisibleRecordRows = function() {
+            return rawTbody ? rawTbody.querySelectorAll('tr[data-raw-record-id]') : [];
+        };
+
+        const setItemsCount = function(newCount) {
+            if (!rawItemsCountEl) return;
+            const count = Math.max(0, parseInt(newCount, 10) || 0);
+            rawItemsCountEl.dataset.count = String(count);
+            rawItemsCountEl.textContent = formatCount(count) + ' ' + i18n_settings.itemsLabel;
+        };
+
+        const adjustItemsCount = function(delta) {
+            if (!rawItemsCountEl) return;
+            const current = parseInt(rawItemsCountEl.dataset.count || '0', 10) || 0;
+            setItemsCount(current + (parseInt(delta, 10) || 0));
+        };
+
+        const ensureEmptyRowState = function() {
+            if (!rawTbody) return;
+            const hasRows = getVisibleRecordRows().length > 0;
+            const existingEmptyRow = rawTbody.querySelector('.dashd-raw-empty-row');
+            if (hasRows && existingEmptyRow) {
+                existingEmptyRow.remove();
+                return;
+            }
+            if (!hasRows && !existingEmptyRow) {
+                const tr = document.createElement('tr');
+                tr.className = 'dashd-raw-empty-row';
+                tr.innerHTML = '<td colspan="5" style="padding:20px; text-align:center; color:#999;">' + escapeHtml(i18n_settings.emptyRows) + '</td>';
+                rawTbody.appendChild(tr);
+            }
+        };
+
+        const renderBulkButtonLabel = function(selectedCount) {
             if (!bulkDeleteBtn) return;
-            const allRows = document.querySelectorAll('.dashd-raw-select');
-            const selected = getSelectedRawIds();
-            bulkDeleteBtn.disabled = selected.length === 0;
             bulkDeleteBtn.textContent = '';
             const icon = document.createElement('span');
             icon.className = 'dashicons dashicons-trash';
             icon.style.fontSize = '16px';
             icon.style.lineHeight = '1';
             bulkDeleteBtn.appendChild(icon);
-            bulkDeleteBtn.appendChild(document.createTextNode(' ' + (selected.length > 0
-                ? "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>" + ` (${selected.length})`
-                : "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>")));
+            const label = selectedCount > 0
+                ? i18n_settings.deleteSelected + ' (' + selectedCount + ')'
+                : i18n_settings.deleteSelected;
+            bulkDeleteBtn.appendChild(document.createTextNode(' ' + label));
+        };
+
+        const updateBulkUiState = function() {
+            if (!bulkDeleteBtn) return;
+            const allRows = getRowCheckboxes();
+            const selected = getSelectedRawIds();
+            bulkDeleteBtn.disabled = selected.length === 0;
+            renderBulkButtonLabel(selected.length);
 
             if (selectAll) {
                 if (allRows.length === 0) {
@@ -843,17 +910,146 @@ function dashd_render_sources_tab($sources) {
             }
         };
 
+        const attachInlineEdit = function(container) {
+            if (!container) return;
+            const viewMode = container.querySelector('.dashd-view-mode');
+            const editMode = container.querySelector('.dashd-edit-mode');
+            const input = container.querySelector('.dashd-val-input');
+            const displayVal = container.querySelector('.dashd-current-val');
+            const id = container.dataset.id;
+            const editTrigger = container.querySelector('.dashd-edit-trigger');
+            const cancelTrigger = container.querySelector('.dashd-cancel-trigger');
+            const saveTrigger = container.querySelector('.dashd-save-trigger');
+            if (!viewMode || !editMode || !input || !displayVal || !id || !editTrigger || !cancelTrigger || !saveTrigger) {
+                return;
+            }
+            let originalVal = input.value;
+
+            editTrigger.onclick = function() {
+                viewMode.style.display = 'none';
+                editMode.style.display = 'flex';
+                input.focus();
+            };
+
+            cancelTrigger.onclick = function() {
+                editMode.style.display = 'none';
+                viewMode.style.display = 'flex';
+                input.value = originalVal;
+            };
+
+            saveTrigger.onclick = async function() {
+                const newVal = input.value;
+                const fd = new FormData();
+                fd.append('action', 'dashd_update_raw_value');
+                fd.append('nonce', updateValueNonce);
+                fd.append('id', id);
+                fd.append('val', newVal);
+
+                container.style.opacity = '0.5';
+                container.style.pointerEvents = 'none';
+                try {
+                    const res = await fetch(ajaxurl, { method: 'POST', body: fd });
+                    const json = await res.json();
+                    if (json && json.success) {
+                        displayVal.textContent = json.data.formatted;
+                        originalVal = newVal;
+                        editMode.style.display = 'none';
+                        viewMode.style.display = 'flex';
+                    } else {
+                        alert(i18n_settings.errorUpdate);
+                    }
+                } catch (e) {
+                    alert(i18n_settings.errorNet);
+                }
+                container.style.opacity = '1';
+                container.style.pointerEvents = 'auto';
+            };
+
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveTrigger.click();
+                }
+            });
+        };
+
+        const attachRowSelection = function(row) {
+            if (!row) return;
+            const checkbox = row.querySelector('.dashd-raw-select');
+            if (checkbox) {
+                checkbox.addEventListener('change', updateBulkUiState);
+            }
+        };
+
+        const renderInlineEditCell = function(rowData) {
+            return '' +
+                '<div class="dashd-inline-edit" data-id="' + escapeHtml(rowData.id) + '">' +
+                    '<div class="dashd-view-mode" style="display:flex; align-items:center; gap:8px;">' +
+                        '<strong class="dashd-current-val">' + escapeHtml(rowData.val_formatted) + '</strong>' +
+                        '<span class="dashicons dashicons-edit dashd-edit-trigger" title="<?php echo esc_attr__('Edit Value', 'dashd-analytics-pro'); ?>"></span>' +
+                    '</div>' +
+                    '<div class="dashd-edit-mode" style="display:none; align-items:center; gap:5px;">' +
+                        '<input type="number" step="any" class="dashd-val-input" value="' + escapeHtml(rowData.val_raw) + '" style="width:110px; padding:0 5px; min-height:28px;">' +
+                        '<button type="button" class="button button-small dashd-save-trigger" style="min-width:0; padding:0 5px; height:28px;"><span class="dashicons dashicons-yes" style="color:#46b450; margin-top:2px;"></span></button>' +
+                        '<button type="button" class="button button-small dashd-cancel-trigger" style="min-width:0; padding:0 5px; height:28px;"><span class="dashicons dashicons-no" style="color:#d63638; margin-top:2px;"></span></button>' +
+                    '</div>' +
+                '</div>';
+        };
+
+        const upsertRawRow = function(rowData) {
+            if (!rawTbody || !rowData || !rowData.id) return false;
+            const rowId = parseInt(rowData.id, 10);
+            if (!Number.isInteger(rowId) || rowId <= 0) return false;
+
+            let row = rawTbody.querySelector('tr[data-raw-record-id="' + rowId + '"]');
+            const isNew = !row;
+
+            if (isNew) {
+                row = document.createElement('tr');
+                row.setAttribute('data-raw-record-id', String(rowId));
+                row.innerHTML = '' +
+                    '<td style="text-align:center;">' +
+                        '<input type="checkbox" class="dashd-raw-select" value="' + escapeHtml(rowId) + '" title="<?php echo esc_attr__('Select row', 'dashd-analytics-pro'); ?>">' +
+                    '</td>' +
+                    '<td class="dashd-col-period"></td>' +
+                    '<td class="dashd-col-indicator"></td>' +
+                    '<td class="dashd-col-country"></td>' +
+                    '<td class="dashd-col-value"></td>';
+                rawTbody.prepend(row);
+                attachRowSelection(row);
+            }
+
+            const periodCell = row.querySelector('.dashd-col-period') || row.children[1];
+            const indicatorCell = row.querySelector('.dashd-col-indicator') || row.children[2];
+            const countryCell = row.querySelector('.dashd-col-country') || row.children[3];
+            const valueCell = row.querySelector('.dashd-col-value') || row.children[4];
+
+            if (periodCell) periodCell.textContent = rowData.period || '';
+            if (indicatorCell) indicatorCell.textContent = rowData.indicator || '';
+            if (countryCell) countryCell.textContent = rowData.country || '';
+            if (valueCell) valueCell.innerHTML = renderInlineEditCell(rowData);
+
+            const inlineEditor = row.querySelector('.dashd-inline-edit');
+            attachInlineEdit(inlineEditor);
+            ensureEmptyRowState();
+            return isNew;
+        };
+
         if (selectAll) {
             selectAll.addEventListener('change', function() {
-                document.querySelectorAll('.dashd-raw-select').forEach((el) => {
+                getRowCheckboxes().forEach(function(el) {
                     el.checked = !!selectAll.checked;
                 });
                 updateBulkUiState();
             });
         }
 
-        document.querySelectorAll('.dashd-raw-select').forEach((el) => {
+        getRowCheckboxes().forEach(function(el) {
             el.addEventListener('change', updateBulkUiState);
+        });
+
+        document.querySelectorAll('.dashd-inline-edit').forEach(function(container) {
+            attachInlineEdit(container);
         });
 
         if (bulkDeleteBtn) {
@@ -872,13 +1068,16 @@ function dashd_render_sources_tab($sources) {
                     const res = await fetch(ajaxurl, { method: 'POST', body: fd });
                     const json = await res.json();
                     if (json && json.success) {
-                        selectedIds.forEach((id) => {
-                            const row = document.querySelector(`tr[data-raw-record-id="${id}"]`);
+                        selectedIds.forEach(function(id) {
+                            const row = rawTbody ? rawTbody.querySelector('tr[data-raw-record-id="' + id + '"]') : null;
                             if (row) row.remove();
                         });
-                        updateBulkUiState();
+                        if (json.data && Number.isInteger(parseInt(json.data.deleted, 10))) {
+                            adjustItemsCount(-parseInt(json.data.deleted, 10));
+                        }
+                        ensureEmptyRowState();
                     } else {
-                        alert(i18n_settings.errorDelete);
+                        alert((json && json.data && json.data.msg) ? json.data.msg : i18n_settings.errorDelete);
                     }
                 } catch (e) {
                     alert(i18n_settings.errorDeleteNet);
@@ -890,11 +1089,11 @@ function dashd_render_sources_tab($sources) {
 
         if (addRawSubmit) {
             addRawSubmit.addEventListener('click', async function() {
-                const indicatorId = parseInt(addRawIndicator?.value || '0', 10);
-                const countryId = parseInt(addRawCountry?.value || '0', 10);
-                const year = parseInt(addRawYear?.value || '0', 10);
-                const quarter = String(addRawQuarter?.value || '').toUpperCase();
-                const value = String(addRawValue?.value || '').trim();
+                const indicatorId = parseInt(addRawIndicator && addRawIndicator.value ? addRawIndicator.value : '0', 10);
+                const countryId = parseInt(addRawCountry && addRawCountry.value ? addRawCountry.value : '0', 10);
+                const year = parseInt(addRawYear && addRawYear.value ? addRawYear.value : '0', 10);
+                const quarter = String(addRawQuarter && addRawQuarter.value ? addRawQuarter.value : '').toUpperCase();
+                const value = String(addRawValue && addRawValue.value ? addRawValue.value : '').trim();
 
                 if (!indicatorId || !countryId || !year || !quarter || value === '') {
                     alert(i18n_settings.addMissing);
@@ -904,7 +1103,7 @@ function dashd_render_sources_tab($sources) {
                 const fd = new FormData();
                 fd.append('action', 'dashd_add_raw_record');
                 fd.append('nonce', addRawNonce);
-                fd.append('source_key', "<?php echo esc_js($src_filter); ?>");
+                fd.append('source_key', sourceKey);
                 fd.append('indicator_id', String(indicatorId));
                 fd.append('country_id', String(countryId));
                 fd.append('data_year', String(year));
@@ -912,13 +1111,22 @@ function dashd_render_sources_tab($sources) {
                 fd.append('val', value);
 
                 addRawSubmit.disabled = true;
-
                 try {
                     const res = await fetch(ajaxurl, { method: 'POST', body: fd });
                     const json = await res.json();
                     if (json && json.success) {
-                        alert(i18n_settings.addSaved);
-                        window.location.reload();
+                        const rowData = json.data && json.data.row ? json.data.row : null;
+                        const mode = json.data && json.data.mode ? String(json.data.mode) : 'inserted';
+                        const inserted = upsertRawRow(rowData);
+                        if (mode === 'inserted' && inserted) {
+                            adjustItemsCount(1);
+                        }
+                        if (addRawValue) {
+                            addRawValue.value = '';
+                            addRawValue.focus();
+                        }
+                        updateBulkUiState();
+                        alert(mode === 'updated' ? i18n_settings.addSavedUpdated : i18n_settings.addSavedInserted);
                         return;
                     }
                     alert((json && json.data && json.data.msg) ? json.data.msg : i18n_settings.addFailed);
@@ -930,55 +1138,12 @@ function dashd_render_sources_tab($sources) {
             });
         }
 
-        document.querySelectorAll('.dashd-inline-edit').forEach(container => {
-            const viewMode = container.querySelector('.dashd-view-mode');
-            const editMode = container.querySelector('.dashd-edit-mode');
-            const input = container.querySelector('.dashd-val-input');
-            const displayVal = container.querySelector('.dashd-current-val');
-            const id = container.dataset.id;
-            let originalVal = input.value;
-
-            container.querySelector('.dashd-edit-trigger').onclick = () => {
-                viewMode.style.display = 'none'; editMode.style.display = 'flex'; input.focus();
-            };
-
-            container.querySelector('.dashd-cancel-trigger').onclick = () => {
-                editMode.style.display = 'none'; viewMode.style.display = 'flex'; input.value = originalVal;
-            };
-
-            container.querySelector('.dashd-save-trigger').onclick = async () => {
-                const newVal = input.value;
-                const fd = new FormData();
-                fd.append('action', 'dashd_update_raw_value');
-                fd.append('nonce', updateValueNonce);
-                fd.append('id', id); fd.append('val', newVal);
-
-                container.style.opacity = '0.5'; container.style.pointerEvents = 'none';
-
-                try {
-                    const res = await fetch(ajaxurl, { method: 'POST', body: fd });
-                    const json = await res.json();
-                    
-                    if (json.success) {
-                        displayVal.innerHTML = json.data.formatted;
-                        originalVal = newVal;
-                        editMode.style.display = 'none'; viewMode.style.display = 'flex';
-                    } else {
-                        alert(i18n_settings.errorUpdate);
-                    }
-                } catch (e) {
-                    alert(i18n_settings.errorNet);
-                }
-                
-                container.style.opacity = '1'; container.style.pointerEvents = 'auto';
-            };
-            
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') { e.preventDefault(); container.querySelector('.dashd-save-trigger').click(); }
-            });
-        });
-
+        ensureEmptyRowState();
         updateBulkUiState();
+        if (rawItemsCountEl) {
+            const initialCount = parseInt(rawItemsCountEl.dataset.count || '0', 10) || 0;
+            setItemsCount(initialCount);
+        }
     });
     </script>
     <?php
@@ -1794,9 +1959,33 @@ function dashd_handle_add_raw_record() {
         dashd_clear_all_caches();
     }
 
+    $saved_id = $existing_id > 0 ? $existing_id : (int) $wpdb->insert_id;
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT r.id, r.data_year, r.data_quarter, r.val, i.name_en AS ind, c.name_en AS cty
+         FROM {$wpdb->prefix}dashd_data_records r
+         JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
+         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+         WHERE r.id = %d
+         LIMIT 1",
+        $saved_id
+    ));
+
+    $row_payload = null;
+    if ($row) {
+        $row_payload = [
+            'id' => (int) $row->id,
+            'period' => (string) $row->data_quarter . ' ' . (string) $row->data_year,
+            'indicator' => (string) $row->ind,
+            'country' => (string) $row->cty,
+            'val_raw' => (string) $row->val,
+            'val_formatted' => number_format((float) $row->val, 2, '.', ' '),
+        ];
+    }
+
     wp_send_json_success([
         'mode' => $mode,
-        'id' => $existing_id > 0 ? $existing_id : (int) $wpdb->insert_id,
+        'id' => $saved_id,
+        'row' => $row_payload,
     ]);
 }
 
