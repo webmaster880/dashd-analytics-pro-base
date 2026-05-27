@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.8.4`
+- Stable version: `11.8.5`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -208,7 +208,7 @@ Notes:
 
 Теперь TTL кэша проверки GitHub release можно настраивать:
 
-- через админку: `Analytics Pro → Settings` (`Update cache (hours)` + `Save TTL`);
+- через админку: `Analytics Pro → Settings` (dropdown `12h..24h` в header actions + `Save TTL`);
 - через `wp-config.php`:
 
 ```php
@@ -320,7 +320,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.8.4`
+Latest release: `11.8.5`
 ---
 
 ## Notes

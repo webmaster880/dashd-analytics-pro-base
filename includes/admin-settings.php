@@ -20,31 +20,28 @@ function dashd_admin_settings_page() {
         <div class="dashd-admin-header">
             <h1><?php esc_html_e('Analytics Pro Settings', 'dashd-analytics-pro'); ?> <span class="dashd-badge">v<?php echo esc_html((string) DASHD_VERSION); ?></span></h1>
             <div class="dashd-header-actions">
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0;">
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-header-form">
                     <input type="hidden" name="action" value="dashd_check_updates">
                     <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
                     <?php wp_nonce_field('dashd_check_updates', 'dashd_check_updates_nonce'); ?>
-                    <button type="submit" class="button button-secondary" style="display:flex; align-items:center; gap:6px;">
+                    <button type="submit" class="button button-secondary dashd-header-btn">
                         <span class="dashicons dashicons-update"></span>
                         <?php esc_html_e('Check updates now', 'dashd-analytics-pro'); ?>
                     </button>
                 </form>
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0; display:flex; align-items:center; gap:6px;">
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-header-form dashd-updater-ttl-form">
                     <input type="hidden" name="action" value="dashd_save_update_cache_ttl">
                     <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
                     <?php wp_nonce_field('dashd_save_update_cache_ttl', 'dashd_save_update_cache_ttl_nonce'); ?>
-                    <label for="dashd-updates-ttl-hours" style="font-size:12px; color:#646970;"><?php esc_html_e('Update cache (hours)', 'dashd-analytics-pro'); ?></label>
-                    <input
-                        id="dashd-updates-ttl-hours"
-                        type="number"
-                        name="updates_ttl_hours"
-                        min="12"
-                        max="24"
-                        step="1"
-                        value="<?php echo esc_attr((string) $updates_ttl_hours); ?>"
-                        style="width:72px;"
-                    >
-                    <button type="submit" class="button button-secondary"><?php esc_html_e('Save TTL', 'dashd-analytics-pro'); ?></button>
+                    <label class="dashd-updater-ttl-label" for="dashd-updates-ttl-hours"><?php esc_html_e('Update cache', 'dashd-analytics-pro'); ?></label>
+                    <select id="dashd-updates-ttl-hours" name="updates_ttl_hours" class="dashd-updater-ttl-select" aria-label="<?php esc_attr_e('Update cache time to live in hours', 'dashd-analytics-pro'); ?>">
+                        <?php for ($h = 12; $h <= 24; $h++): ?>
+                            <option value="<?php echo (int) $h; ?>" <?php selected($updates_ttl_hours, $h); ?>>
+                                <?php echo esc_html((string) $h); ?>h
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                    <button type="submit" class="button button-secondary dashd-header-btn"><?php esc_html_e('Save TTL', 'dashd-analytics-pro'); ?></button>
                 </form>
             </div>
         </div>

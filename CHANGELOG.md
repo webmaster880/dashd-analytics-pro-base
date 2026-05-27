@@ -15,6 +15,9 @@ All notable changes to this project are documented in this file.
   - wipe action now returns to `Settings → Data Sources & Raw Data` with `status=wiped`.
 - Constructor button styling aligned:
   - dashicons in constructor action buttons now use unified vertical centering and spacing.
+- Admin settings header polish:
+  - `Update cache` control rebuilt as compact TTL dropdown (`12h..24h`) with unified styling next to `Check updates now`;
+  - improved spacing/alignment and responsive behavior for header action controls.
 
 ### Added
 - New `Settings → Logs` management actions:
