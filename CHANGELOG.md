@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased] - 2026-05-27
+
+### Changed
+- Admin operations layout restructured:
+  - `Global Synchronization`, `Auto-Synchronization (WP Cron)`, and `Danger Zone: Wipe Data` moved from main dashboard to `Settings → Data Sources & Raw Data` (placed above `Connected Sources`).
+  - `Recent Sync Logs` moved to dedicated `Settings → Logs` tab.
+- Main `Analytics Pro Dashboard` simplified to overview cards plus quick links to new `Settings` locations.
+- Action redirects updated to the new structure:
+  - manual sync now returns to `Settings → Data Sources & Raw Data` with `status=synced`;
+  - auto-sync schedule save now returns to `Settings → Data Sources & Raw Data` with `status=cron_saved`;
+  - wipe action now returns to `Settings → Data Sources & Raw Data` with `status=wiped`.
+
+### Added
+- New `Settings → Logs` management actions:
+  - export sync logs to CSV;
+  - clear sync logs (with confirmation).
+- New settings notice for logs cleanup status (`status=logs_cleared`).
+- Documentation update for `build.sh` options:
+  - `--comment`;
+  - `--yes`;
+  - auto commit/push and final status line behavior.
+
 ## [11.7.16] - 2026-05-18
 
 ### Added

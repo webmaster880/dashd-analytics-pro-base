@@ -38,16 +38,29 @@ function dashd_admin_settings_page() {
         <?php if ($status === 'source_not_found'): ?>
             <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Source update failed: source not found.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
+        <?php if ($status === 'synced'): ?>
+            <div class="notice notice-success is-dismissible"><p>✅ <strong><?php esc_html_e('Synchronization complete.', 'dashd-analytics-pro'); ?></strong> <?php esc_html_e('All data is up to date.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'cron_saved'): ?>
+            <div class="notice notice-success is-dismissible"><p>⏱️ <strong><?php esc_html_e('Schedule updated.', 'dashd-analytics-pro'); ?></strong></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'wiped'): ?>
+            <div class="notice notice-error is-dismissible"><p>🗑️ <strong><?php esc_html_e('Data wiped.', 'dashd-analytics-pro'); ?></strong> <?php esc_html_e('All records, snapshots, leads, and sync logs have been permanently deleted.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'logs_cleared'): ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Sync logs cleared.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
 
         <h2 class="nav-tab-wrapper">
             <a href="?page=dashd-settings&tab=sources" class="nav-tab <?php echo $active_tab == 'sources' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Data Sources & Raw Data', 'dashd-analytics-pro'); ?></a>
+            <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=countries" class="nav-tab <?php echo $active_tab == 'countries' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Countries Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=indicators" class="nav-tab <?php echo $active_tab == 'indicators' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Indicators Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=branding" class="nav-tab <?php echo $active_tab == 'branding' ? 'nav-tab-active' : ''; ?>" style="color:#1e87f0;"><?php esc_html_e('PDF Branding 🎨', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=leads" class="nav-tab <?php echo $active_tab == 'leads' ? 'nav-tab-active' : ''; ?>" style="color:#10b981;"><?php esc_html_e('Leads (Emails) 📩', 'dashd-analytics-pro'); ?></a>
         </h2>
 
-        <?php if ($active_tab !== 'branding' && $active_tab !== 'leads'): ?>
+        <?php if ($active_tab !== 'branding' && $active_tab !== 'leads' && $active_tab !== 'logs'): ?>
         <div class="dashd-toolbar">
             <div class="dashd-toolbar-group">
                 <p class="dashd-toolbar-title"><?php esc_html_e('Dictionaries Actions:', 'dashd-analytics-pro'); ?></p>
@@ -85,6 +98,8 @@ function dashd_admin_settings_page() {
                 dashd_render_branding_tab();
             } elseif ($active_tab === 'leads') {
                 dashd_render_leads_tab();
+            } elseif ($active_tab === 'logs') {
+                dashd_render_logs_tab();
             } else {
                 dashd_render_sources_tab($sources);
             }
@@ -92,6 +107,20 @@ function dashd_admin_settings_page() {
         </div>
     </div>
     <?php
+}
+
+function dashd_render_logs_tab() {
+    ?>
+    <div class="dashd-card" style="margin-top: 12px;">
+        <h3 style="margin-top:0;"><?php esc_html_e('Synchronization Logs', 'dashd-analytics-pro'); ?></h3>
+        <p style="color:#646970; margin-bottom:10px;">
+            <?php esc_html_e('This section contains sync history, anomaly details, and maintenance actions for logs.', 'dashd-analytics-pro'); ?>
+        </p>
+    </div>
+    <?php
+    if (function_exists('dashd_render_admin_sync_logs_table')) {
+        dashd_render_admin_sync_logs_table(true);
+    }
 }
 
 function dashd_render_branding_tab() {
@@ -509,6 +538,12 @@ function dashd_render_sources_tab($sources) {
     };
 
     ?>
+    <?php if (function_exists('dashd_render_admin_sync_controls')): ?>
+    <div style="margin-top: 4px;">
+        <?php dashd_render_admin_sync_controls(); ?>
+    </div>
+    <?php endif; ?>
+
     <div class="dashd-card" style="margin-top:20px;">
         <h3 style="margin-top:0;"><?php esc_html_e('Connected Sources', 'dashd-analytics-pro'); ?></h3>
         <div class="dashd-table-container">

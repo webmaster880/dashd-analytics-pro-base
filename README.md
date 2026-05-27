@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.7.21`
+- Stable version: `11.7.22`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -196,7 +196,23 @@ chmod +x build.sh
 ./build.sh patch
 ./build.sh minor
 ./build.sh major
+./build.sh patch --comment "mobile fixes"
+./build.sh minor --yes --comment "release notes short tag"
 ```
+
+Build options:
+
+- `patch|minor|major` — повышает версию (`bin/bump-version.php`) перед сборкой.
+- `--comment "text"` — добавляет текст к commit message после `Release vX.Y.Z - ...`.
+- `--yes` — пропускает интерактивное подтверждение перед релизным commit.
+
+Build behavior (when bump type is provided):
+
+- выполняется `git add -A`;
+- создается release commit в формате `Release vX.Y.Z` (с optional comment);
+- автоматически выполняется `git push` текущей ветки в `origin`;
+- создается ZIP архив в `../dashd-archive`;
+- в конце печатается цветная строка финального статуса с версией и timestamp.
 
 Output archive pattern:
 
@@ -212,7 +228,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.7.21`
+Latest release: `11.7.22`
 ---
 
 ## Notes
