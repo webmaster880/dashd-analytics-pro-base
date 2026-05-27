@@ -301,6 +301,16 @@
 .dashd-admin-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; margin-top: 15px; }
 .dashd-admin-header h1 { margin: 0; font-weight: 600; font-size: 24px; color: #1d2327; line-height: 1.2; }
 .dashd-admin-header .dashd-header-actions { margin-left: auto; display: inline-flex; align-items: center; }
+.dashd-admin-header .dashd-header-actions .button .dashicons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    line-height: 1;
+    margin: 0;
+    vertical-align: middle;
+}
 .dashd-badge { background: #e0f0fa; color: #2271b1; padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; vertical-align: middle; }
 
 /* Сетка (Grid) для карточек */

@@ -146,7 +146,8 @@ rsync -av --progress ./ "$BUILD_DIR/$PLUGIN_SLUG" \
     --exclude 'node_modules' \
     --exclude 'package.json' \
     --exclude 'package-lock.json' \
-    --exclude 'build_temp'
+    --exclude 'build_temp' \
+    --exclude 'github_token.md'
 
 # Убеждаемся, что папка для готовых архивов существует
 mkdir -p "$ARCHIVE_DIR"
