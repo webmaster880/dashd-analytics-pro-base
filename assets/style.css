@@ -8,6 +8,21 @@
     --dashd-gray: #e0e0e0;
 }
 
+/* Admin: unified dashicon alignment inside plugin buttons */
+.dashd-card .button .dashicons,
+.dashd-toolbar .button .dashicons,
+.dashd-action-card .button .dashicons,
+.dashd-table-container .button .dashicons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    line-height: 1;
+    vertical-align: middle;
+    margin-top: 0;
+}
+
 /* Общие кнопки */
 .dashd-ui-btn { 
     border-radius: 50vh; padding: 5px 15px; border: 1px solid #e2e2e2; 
