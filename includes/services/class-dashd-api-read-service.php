@@ -359,7 +359,58 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $years_args[] = $max_years;
             $years = $wpdb->get_col($wpdb->prepare($years_sql, ...$years_args));
             $quarters = ['Q4', 'Q3', 'Q2', 'Q1'];
-            $data = ['years' => $years, 'quarters' => $quarters];
+
+            $periods_sql = "SELECT DISTINCT r.data_year, r.data_quarter
+                 FROM {$wpdb->prefix}dashd_data_records r
+                 WHERE 1=1";
+            $periods_args = [];
+            if (!empty($indicator_specs)) {
+                [$indicator_sql, $indicator_args] = self::build_indicator_filter_sql($indicator_specs, 'r', $key);
+                if ($indicator_sql !== '') {
+                    $periods_sql .= " AND ({$indicator_sql})";
+                    $periods_args = array_merge($periods_args, $indicator_args);
+                }
+            } else {
+                $periods_sql .= " AND r.source_key = %s";
+                $periods_args[] = $key;
+            }
+            $periods_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC";
+            $period_rows = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
+
+            $valid_quarters = ['Q4', 'Q3', 'Q2', 'Q1'];
+            $year_quarters = [];
+            $latest = ['year' => null, 'quarter' => null];
+            foreach ($period_rows as $idx => $row) {
+                $year = (string) ($row->data_year ?? '');
+                $quarter = strtoupper((string) ($row->data_quarter ?? ''));
+                if ($year === '' || !in_array($quarter, $valid_quarters, true)) {
+                    continue;
+                }
+                if (!isset($year_quarters[$year])) {
+                    $year_quarters[$year] = [];
+                }
+                if (!in_array($quarter, $year_quarters[$year], true)) {
+                    $year_quarters[$year][] = $quarter;
+                }
+                if ($idx === 0) {
+                    $latest = ['year' => $year, 'quarter' => $quarter];
+                }
+            }
+
+            foreach ($year_quarters as $year => $q_list) {
+                usort($q_list, static function ($a, $b) {
+                    $rank = ['Q4' => 4, 'Q3' => 3, 'Q2' => 2, 'Q1' => 1];
+                    return ($rank[$b] ?? 0) <=> ($rank[$a] ?? 0);
+                });
+                $year_quarters[$year] = array_values($q_list);
+            }
+
+            $data = [
+                'years' => $years,
+                'quarters' => $quarters,
+                'year_quarters' => $year_quarters,
+                'latest' => $latest,
+            ];
 
             self::cache_if_needed($cache_key, $data, 'periods_split');
 

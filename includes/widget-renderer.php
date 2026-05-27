@@ -574,6 +574,9 @@ function dashd_render_front_widget($atts) {
             barOrientation = config.barOrientation || 'horizontal',
             barStacked = Boolean(config.barStacked),
             curCty = i18n.allCountries, curY = null, curQ = null;
+        let periodYears = [];
+        let periodQuarters = ['Q4', 'Q3', 'Q2', 'Q1'];
+        let periodYearQuarterMap = {};
             
         let sparklines = [];
         const hiddenLegendKeys = new Set();
@@ -598,6 +601,60 @@ function dashd_render_front_widget($atts) {
             mobileFieldYear: root.querySelector('.dashd-mobile-field-year'),
             mobileFieldQuarter: root.querySelector('.dashd-mobile-field-quarter'),
             mobileControlsWrap: root.querySelector('.dashd-mobile-controls')
+        };
+
+        const getAvailableQuartersForYear = (year) => {
+            const y = String(year ?? '');
+            if (!y || !periodYearQuarterMap || typeof periodYearQuarterMap !== 'object') {
+                return periodQuarters.slice();
+            }
+            const available = Array.isArray(periodYearQuarterMap[y])
+                ? periodYearQuarterMap[y].map((q) => String(q || '').toUpperCase()).filter(Boolean)
+                : [];
+            const normalized = periodQuarters.filter((q) => available.includes(q));
+            return normalized.length ? normalized : periodQuarters.slice();
+        };
+
+        const ensureValidQuarterForYear = () => {
+            const available = getAvailableQuartersForYear(curY);
+            if (!available.length) {
+                curQ = null;
+                return;
+            }
+            const current = String(curQ ?? '').toUpperCase();
+            if (!current || !available.includes(current)) {
+                curQ = available[0];
+            }
+        };
+
+        const renderQuarterControlsForCurrentYear = () => {
+            const available = getAvailableQuartersForYear(curY);
+            const qBox = controls.quarterButtonsBox;
+            if (qBox) {
+                qBox.innerHTML = periodQuarters.map((q) => {
+                    const isAvailable = available.includes(q);
+                    const isActive = String(q) === String(curQ);
+                    return `<button class="dashd-ui-btn ${isActive ? 'active-btn' : ''}" data-v="${escapeHtml(q)}"${isAvailable ? '' : ' disabled aria-disabled="true" style="opacity:.45;cursor:not-allowed;"'}>${escapeHtml(q)}</button>`;
+                }).join('');
+                qBox.querySelectorAll('button').forEach((b) => {
+                    b.onclick = () => {
+                        const nextQuarter = String(b.dataset.v || '');
+                        if (!nextQuarter) return;
+                        const allowed = getAvailableQuartersForYear(curY);
+                        if (!allowed.includes(nextQuarter)) return;
+                        curQ = nextQuarter;
+                        syncPeriodButtons();
+                        syncMobileSelectors();
+                        loadData();
+                    };
+                });
+            }
+
+            if (controls.mobileQuarterSelect) {
+                controls.mobileQuarterSelect.innerHTML = available
+                    .map((q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`)
+                    .join('');
+            }
         };
 
         const loader = root.querySelector('.dashd-loader-overlay');
@@ -1639,6 +1696,8 @@ function dashd_render_front_widget($atts) {
                     const nextYear = String(this.value || '');
                     if (!nextYear || nextYear === String(curY)) return;
                     curY = nextYear;
+                    ensureValidQuarterForYear();
+                    renderQuarterControlsForCurrentYear();
                     syncPeriodButtons();
                     syncMobileSelectors();
                     loadData();
@@ -1648,6 +1707,14 @@ function dashd_render_front_widget($atts) {
                 controls.mobileQuarterSelect.onchange = function() {
                     const nextQuarter = String(this.value || '');
                     if (!nextQuarter || nextQuarter === String(curQ)) return;
+                    const allowed = getAvailableQuartersForYear(curY);
+                    if (!allowed.includes(nextQuarter)) {
+                        ensureValidQuarterForYear();
+                        renderQuarterControlsForCurrentYear();
+                        syncPeriodButtons();
+                        syncMobileSelectors();
+                        return;
+                    }
                     curQ = nextQuarter;
                     syncPeriodButtons();
                     syncMobileSelectors();
@@ -2234,30 +2301,57 @@ function dashd_render_front_widget($atts) {
                     const pJson = await pRes.json();
                     
                     if (pJson.success && pJson.data.years.length) {
-                        const sYears = pJson.data.years.sort((a,b)=>b-a).map((v) => String(v));
-                        const sQuarters = pJson.data.quarters.sort((a,b)=>b.localeCompare(a)).map((v) => String(v));
-                        curY = sYears[0] || null;
-                        curQ = sQuarters[0] || null;
+                        periodYears = pJson.data.years
+                            .slice()
+                            .sort((a, b) => Number(b) - Number(a))
+                            .map((v) => String(v));
+                        periodQuarters = Array.isArray(pJson.data.quarters) && pJson.data.quarters.length
+                            ? pJson.data.quarters
+                                .slice()
+                                .map((v) => String(v || '').toUpperCase())
+                                .filter((v) => ['Q1', 'Q2', 'Q3', 'Q4'].includes(v))
+                                .sort((a, b) => b.localeCompare(a))
+                            : ['Q4', 'Q3', 'Q2', 'Q1'];
+                        if (!periodQuarters.length) {
+                            periodQuarters = ['Q4', 'Q3', 'Q2', 'Q1'];
+                        }
+
+                        const mapFromApi = (pJson.data.year_quarters && typeof pJson.data.year_quarters === 'object')
+                            ? pJson.data.year_quarters
+                            : {};
+                        periodYearQuarterMap = {};
+                        periodYears.forEach((year) => {
+                            const fromMap = Array.isArray(mapFromApi[year])
+                                ? mapFromApi[year].map((v) => String(v || '').toUpperCase())
+                                : [];
+                            const normalized = periodQuarters.filter((q) => fromMap.includes(q));
+                            periodYearQuarterMap[year] = normalized.length ? normalized : periodQuarters.slice();
+                        });
+
+                        const latestFromApi = pJson.data.latest && typeof pJson.data.latest === 'object'
+                            ? pJson.data.latest
+                            : {};
+                        const latestYear = String(latestFromApi.year || '');
+                        const latestQuarter = String(latestFromApi.quarter || '').toUpperCase();
+                        curY = periodYears.includes(latestYear) ? latestYear : (periodYears[0] || null);
+                        const availableForCurrent = getAvailableQuartersForYear(curY);
+                        curQ = availableForCurrent.includes(latestQuarter)
+                            ? latestQuarter
+                            : (availableForCurrent[0] || periodQuarters[0] || null);
+                        ensureValidQuarterForYear();
                         
                         const yBox = controls.yearButtonsBox;
                         const qBox = controls.quarterButtonsBox;
                         if (yBox && qBox) {
-                            yBox.innerHTML = sYears.map((y) => `<button class="dashd-ui-btn ${String(y)===String(curY)?'active-btn':''}" data-v="${escapeHtml(y)}">${escapeHtml(y)}</button>`).join('');
-                            qBox.innerHTML = sQuarters.map((q) => `<button class="dashd-ui-btn ${String(q)===String(curQ)?'active-btn':''}" data-v="${escapeHtml(q)}">${escapeHtml(q)}</button>`).join('');
+                            yBox.innerHTML = periodYears.map((y) => `<button class="dashd-ui-btn ${String(y)===String(curY)?'active-btn':''}" data-v="${escapeHtml(y)}">${escapeHtml(y)}</button>`).join('');
+                            renderQuarterControlsForCurrentYear();
                             
                             yBox.querySelectorAll('button').forEach((b) => {
                                 b.onclick = () => {
                                     curY = String(b.dataset.v || '');
                                     if (!curY) return;
-                                    syncPeriodButtons();
-                                    syncMobileSelectors();
-                                    loadData();
-                                };
-                            });
-                            qBox.querySelectorAll('button').forEach((b) => {
-                                b.onclick = () => {
-                                    curQ = String(b.dataset.v || '');
-                                    if (!curQ) return;
+                                    ensureValidQuarterForYear();
+                                    renderQuarterControlsForCurrentYear();
                                     syncPeriodButtons();
                                     syncMobileSelectors();
                                     loadData();
@@ -2266,11 +2360,9 @@ function dashd_render_front_widget($atts) {
                         }
 
                         if (controls.mobileYearSelect) {
-                            controls.mobileYearSelect.innerHTML = sYears.map((y) => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
+                            controls.mobileYearSelect.innerHTML = periodYears.map((y) => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
                         }
-                        if (controls.mobileQuarterSelect) {
-                            controls.mobileQuarterSelect.innerHTML = sQuarters.map((q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`).join('');
-                        }
+                        renderQuarterControlsForCurrentYear();
                         syncPeriodButtons();
                         syncMobileSelectors();
                         syncPeriodControlVisibility();

@@ -12,7 +12,8 @@
 .dashd-card .button .dashicons,
 .dashd-toolbar .button .dashicons,
 .dashd-action-card .button .dashicons,
-.dashd-table-container .button .dashicons {
+.dashd-table-container .button .dashicons,
+.con-sidebar .button .dashicons {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -21,6 +22,13 @@
     line-height: 1;
     vertical-align: middle;
     margin-top: 0;
+}
+
+.con-sidebar .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 /* Общие кнопки */
