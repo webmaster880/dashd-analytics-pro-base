@@ -1050,7 +1050,7 @@ function dashd_render_front_widget($atts) {
                 const rank = quarterRank[q] || 0;
                 const prev = latestIndexByYear.get(year);
                 if (!prev || rank > prev.rank || (rank === prev.rank && idx > prev.idx)) {
-                    latestIndexByYear.set(year, { idx, rank });
+                    latestIndexByYear.set(year, { idx, rank, quarter: q });
                 }
             });
 
@@ -1069,7 +1069,13 @@ function dashd_render_front_widget($atts) {
                 });
             });
 
-            return { indicatorName, yearsAsc, countries, valuesByCountry };
+            const yearLabels = yearsAsc.map((year) => {
+                const ref = latestIndexByYear.get(year);
+                if (!ref) return String(year);
+                return ref.quarter === 'Q4' ? String(year) : `${year} (${ref.quarter})`;
+            });
+
+            return { indicatorName, yearsAsc, yearLabels, countries, valuesByCountry };
         };
 
         const renderChart = () => {
@@ -1168,7 +1174,9 @@ function dashd_render_front_widget($atts) {
             } else if (isSingleIndicatorYearMode() && trendData && trendData.indicators) {
                 const annual = buildSingleIndicatorYearData();
                 if (annual) {
-                    d.labels = annual.yearsAsc.map((y) => String(y));
+                    d.labels = annual.yearLabels && annual.yearLabels.length
+                        ? annual.yearLabels
+                        : annual.yearsAsc.map((y) => String(y));
                     const isStackedYear = (curCty === i18n.allCountries && barStacked);
 
                     if (isStackedYear) {
@@ -1493,7 +1501,8 @@ function dashd_render_front_widget($atts) {
                         rowSum += val;
                         return `<td><div style="font-size:13px;">${formatNum(val)}</div></td>`;
                     }).join('');
-                    return `<tr><td><strong>${escapeHtml(String(year))}</strong></td>${cells}<td class="dashd-total-col">${formatNum(rowSum)}</td></tr>`;
+                    const periodLabel = (annual.yearLabels && annual.yearLabels[rowIdx]) ? annual.yearLabels[rowIdx] : String(year);
+                    return `<tr><td><strong>${escapeHtml(periodLabel)}</strong></td>${cells}<td class="dashd-total-col">${formatNum(rowSum)}</td></tr>`;
                 }).join('');
             } else if (rawData && rawData.indicators) {
                 thead.innerHTML = `<th>${escapeHtml(i18n.indicator)}</th>` + rawData.countries.map(c => `<th>${escapeHtml(c)}</th>`).join('') + `<th class="dashd-total-col">${escapeHtml(i18n.total)}</th>`;
