@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.8.2`
+- Stable version: `11.8.3`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -254,6 +254,7 @@ chmod +x build.sh
 ./build.sh major
 ./build.sh patch --comment "mobile fixes"
 ./build.sh minor --yes --comment "release notes short tag"
+./build.sh patch --yes --publish-release --comment "release + github asset"
 ```
 
 Build options:
@@ -261,6 +262,10 @@ Build options:
 - `patch|minor|major` — повышает версию (`bin/bump-version.php`) перед сборкой.
 - `--comment "text"` — добавляет текст к commit message после `Release vX.Y.Z - ...`.
 - `--yes` — пропускает интерактивное подтверждение перед релизным commit.
+- `--publish-release` — после сборки создает/обновляет GitHub Release:
+  - создает тег `vX.Y.Z` (если отсутствует),
+  - пушит тег в `origin`,
+  - создает release (`gh release create`) или обновляет ZIP asset (`gh release upload --clobber`).
 
 Build behavior (when bump type is provided):
 
@@ -269,6 +274,12 @@ Build behavior (when bump type is provided):
 - автоматически выполняется `git push` текущей ветки в `origin`;
 - создается ZIP архив в `../dashd-archive`;
 - в конце печатается цветная строка финального статуса с версией и timestamp.
+
+Additional requirements for `--publish-release`:
+
+- установлен и авторизован GitHub CLI (`gh auth login`);
+- запуск с bump-уровнем (`patch|minor|major`);
+- наличие прав push/tag/release для удаленного репозитория.
 
 Output archive pattern:
 
@@ -284,7 +295,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.8.2`
+Latest release: `11.8.3`
 ---
 
 ## Notes

@@ -33,6 +33,8 @@ All notable changes to this project are documented in this file.
   - supports private repositories via token (`DASHD_GITHUB_TOKEN`);
   - update metadata and plugin info are injected through native WP update hooks.
  - `Settings` header now includes `Check updates now` action to force refresh plugin update metadata.
+- Release automation in `build.sh`:
+  - new `--publish-release` option creates/pushes tag and publishes (or updates) GitHub Release ZIP asset via `gh` CLI.
 
 ### Fixed
 - Multi-indicator default period selection:

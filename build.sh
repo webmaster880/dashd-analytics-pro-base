@@ -26,6 +26,7 @@ trap print_final_status EXIT
 BUMP_TYPE=""
 AUTO_YES=0
 RELEASE_COMMENT=""
+PUBLISH_RELEASE=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         patch|minor|major)
@@ -54,9 +55,13 @@ while [ "$#" -gt 0 ]; do
             RELEASE_COMMENT="${1#--comment=}"
             shift
             ;;
+        --publish-release)
+            PUBLISH_RELEASE=1
+            shift
+            ;;
         *)
             echo "⚠️ Ошибка: Недопустимый параметр '$1'."
-            echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] [--comment \"text\"] (или без параметров для пересборки текущей версии)"
+            echo "💡 Используйте: ./build.sh [patch|minor|major] [--yes] [--comment \"text\"] [--publish-release] (или без параметров для пересборки текущей версии)"
             exit 1
             ;;
     esac
@@ -162,3 +167,61 @@ cd "$ROOT_DIR"
 rm -rf "$BUILD_DIR"
 
 echo "✅ Сборка успешно завершена! Готовый файл: $ARCHIVE_DIR/$ZIP_NAME"
+
+# 7. Публикация релиза в GitHub (опционально)
+if [ "$PUBLISH_RELEASE" -eq 1 ]; then
+    if [ -z "$BUMP_TYPE" ]; then
+        echo "⚠️ Для --publish-release требуется bump-уровень (patch|minor|major)."
+        echo "💡 Пример: ./build.sh patch --publish-release"
+        exit 1
+    fi
+
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "❌ Git-репозиторий не найден. Публикация релиза невозможна."
+        exit 1
+    fi
+
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "❌ GitHub CLI (gh) не установлен. Установите gh и повторите."
+        exit 1
+    fi
+
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "❌ Нет авторизации в GitHub CLI. Выполните: gh auth login"
+        exit 1
+    fi
+
+    TAG_NAME="v${VERSION}"
+    RELEASE_TITLE="Release ${TAG_NAME}"
+    RELEASE_ASSET_PATH="${ARCHIVE_DIR}/${ZIP_NAME}"
+
+    echo "🏷️ Подготовка тега ${TAG_NAME}..."
+    if git rev-parse -q --verify "refs/tags/${TAG_NAME}" >/dev/null 2>&1; then
+        echo "ℹ️ Локальный тег ${TAG_NAME} уже существует."
+    else
+        git tag -a "${TAG_NAME}" -m "${RELEASE_TITLE}"
+        echo "✅ Тег ${TAG_NAME} создан."
+    fi
+
+    if git ls-remote --tags origin "refs/tags/${TAG_NAME}" | grep -q "${TAG_NAME}$"; then
+        echo "ℹ️ Тег ${TAG_NAME} уже есть на origin."
+    else
+        echo "🚀 Публикация тега ${TAG_NAME} в origin..."
+        git push origin "${TAG_NAME}"
+    fi
+
+    if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+        echo "📦 Релиз ${TAG_NAME} уже существует. Обновляю ZIP asset..."
+        gh release upload "${TAG_NAME}" "${RELEASE_ASSET_PATH}" --clobber
+    else
+        echo "🆕 Создаю GitHub Release ${TAG_NAME}..."
+        gh release create "${TAG_NAME}" "${RELEASE_ASSET_PATH}" \
+            --title "${RELEASE_TITLE}" \
+            --generate-notes
+    fi
+
+    RELEASE_URL="$(gh release view "${TAG_NAME}" --json url -q '.url' 2>/dev/null || true)"
+    if [ -n "${RELEASE_URL}" ]; then
+        echo "🔗 GitHub Release: ${RELEASE_URL}"
+    fi
+fi
