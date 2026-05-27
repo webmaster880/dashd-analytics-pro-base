@@ -13,6 +13,8 @@ All notable changes to this project are documented in this file.
   - manual sync now returns to `Settings → Data Sources & Raw Data` with `status=synced`;
   - auto-sync schedule save now returns to `Settings → Data Sources & Raw Data` with `status=cron_saved`;
   - wipe action now returns to `Settings → Data Sources & Raw Data` with `status=wiped`.
+- Constructor button styling aligned:
+  - dashicons in constructor action buttons now use unified vertical centering and spacing.
 
 ### Added
 - New `Settings → Logs` management actions:
@@ -23,6 +25,16 @@ All notable changes to this project are documented in this file.
   - `--comment`;
   - `--yes`;
   - auto commit/push and final status line behavior.
+- `get_dashd_periods_split` response extended with period availability metadata:
+  - `year_quarters` map of available quarters per year;
+  - `latest` period object (`year` + `quarter`) for deterministic default selection.
+
+### Fixed
+- Multi-indicator default period selection:
+  - widget no longer defaults to `Q4` for the latest year when `Q4` data is missing;
+  - default now resolves to the latest actually available quarter of the latest year.
+- Quarter controls stability:
+  - quarter buttons/select are now rebuilt per selected year and guarded against unavailable quarter picks.
 
 ## [11.7.16] - 2026-05-18
 
