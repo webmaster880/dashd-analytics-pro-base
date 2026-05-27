@@ -659,9 +659,21 @@ function dashd_render_sources_tab($sources) {
     </div>
 
     <div class="dashd-table-container">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
+            <div style="font-size:12px; color:#646970;">
+                <?php esc_html_e('Select one or more rows to delete raw records in bulk.', 'dashd-analytics-pro'); ?>
+            </div>
+            <button type="button" id="dashd-delete-selected-raw" class="button button-secondary" disabled style="display:flex; align-items:center; gap:6px;">
+                <span class="dashicons dashicons-trash" style="font-size:16px; line-height:1;"></span>
+                <?php esc_html_e('Delete Selected', 'dashd-analytics-pro'); ?>
+            </button>
+        </div>
         <table class="dashd-table" style="width:100%;">
             <thead>
                 <tr>
+                    <th style="width:4%; text-align:center;">
+                        <input type="checkbox" id="dashd-raw-select-all" title="<?php esc_attr_e('Select all rows', 'dashd-analytics-pro'); ?>">
+                    </th>
                     <th style="cursor:pointer; width:15%;"><a href="<?php echo esc_url($build_sort_url('data_year')); ?>" style="text-decoration:none; color:inherit; display:flex; align-items:center; justify-content:flex-start; gap:5px;"><?php esc_html_e('Period', 'dashd-analytics-pro'); ?> <?php echo $get_sort_icon('data_year'); ?></a></th>
                     <th style="cursor:pointer; width:40%;"><a href="<?php echo esc_url($build_sort_url('ind')); ?>" style="text-decoration:none; color:inherit; display:flex; align-items:center; justify-content:flex-start; gap:5px;"><?php esc_html_e('Indicator', 'dashd-analytics-pro'); ?> <?php echo $get_sort_icon('ind'); ?></a></th>
                     <th style="cursor:pointer; width:20%;"><a href="<?php echo esc_url($build_sort_url('cty')); ?>" style="text-decoration:none; color:inherit; display:flex; align-items:center; justify-content:flex-start; gap:5px;"><?php esc_html_e('Country', 'dashd-analytics-pro'); ?> <?php echo $get_sort_icon('cty'); ?></a></th>
@@ -670,7 +682,10 @@ function dashd_render_sources_tab($sources) {
             </thead>
             <tbody>
                 <?php if($records): foreach($records as $r): ?>
-                <tr>
+                <tr data-raw-record-id="<?php echo (int) $r->id; ?>">
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="dashd-raw-select" value="<?php echo (int) $r->id; ?>" title="<?php esc_attr_e('Select row', 'dashd-analytics-pro'); ?>">
+                    </td>
                     <td><?php echo esc_html($r->data_quarter.' '.$r->data_year); ?></td>
                     <td><?php echo esc_html($r->ind); ?></td>
                     <td><?php echo esc_html($r->cty); ?></td>
@@ -689,7 +704,7 @@ function dashd_render_sources_tab($sources) {
                     </td>
                 </tr>
                 <?php endforeach; else: ?>
-                <tr><td colspan="4" style="padding:20px; text-align:center; color:#999;"><?php esc_html_e('No records found for this source.', 'dashd-analytics-pro'); ?></td></tr>
+                <tr><td colspan="5" style="padding:20px; text-align:center; color:#999;"><?php esc_html_e('No records found for this source.', 'dashd-analytics-pro'); ?></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -699,9 +714,90 @@ function dashd_render_sources_tab($sources) {
     document.addEventListener('DOMContentLoaded', function() {
         const i18n_settings = {
             errorUpdate: "<?php echo esc_js(__('Error updating value.', 'dashd-analytics-pro')); ?>",
-            errorNet: "<?php echo esc_js(__('Network error during update.', 'dashd-analytics-pro')); ?>"
+            errorNet: "<?php echo esc_js(__('Network error during update.', 'dashd-analytics-pro')); ?>",
+            deleteConfirm: "<?php echo esc_js(__('Delete selected records? This action cannot be undone.', 'dashd-analytics-pro')); ?>",
+            errorDelete: "<?php echo esc_js(__('Error deleting selected records.', 'dashd-analytics-pro')); ?>",
+            errorDeleteNet: "<?php echo esc_js(__('Network error during delete.', 'dashd-analytics-pro')); ?>"
         };
         const updateValueNonce = "<?php echo esc_js(wp_create_nonce('dashd_update_raw_value')); ?>";
+        const deleteRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_delete_raw_records')); ?>";
+        const bulkDeleteBtn = document.getElementById('dashd-delete-selected-raw');
+        const selectAll = document.getElementById('dashd-raw-select-all');
+
+        const getSelectedRawIds = () => Array.from(document.querySelectorAll('.dashd-raw-select:checked'))
+            .map((el) => parseInt(el.value, 10))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        const updateBulkUiState = () => {
+            if (!bulkDeleteBtn) return;
+            const allRows = document.querySelectorAll('.dashd-raw-select');
+            const selected = getSelectedRawIds();
+            bulkDeleteBtn.disabled = selected.length === 0;
+            bulkDeleteBtn.textContent = '';
+            const icon = document.createElement('span');
+            icon.className = 'dashicons dashicons-trash';
+            icon.style.fontSize = '16px';
+            icon.style.lineHeight = '1';
+            bulkDeleteBtn.appendChild(icon);
+            bulkDeleteBtn.appendChild(document.createTextNode(' ' + (selected.length > 0
+                ? "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>" + ` (${selected.length})`
+                : "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>")));
+
+            if (selectAll) {
+                if (allRows.length === 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                } else {
+                    selectAll.checked = selected.length === allRows.length;
+                    selectAll.indeterminate = selected.length > 0 && selected.length < allRows.length;
+                }
+            }
+        };
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.dashd-raw-select').forEach((el) => {
+                    el.checked = !!selectAll.checked;
+                });
+                updateBulkUiState();
+            });
+        }
+
+        document.querySelectorAll('.dashd-raw-select').forEach((el) => {
+            el.addEventListener('change', updateBulkUiState);
+        });
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', async function() {
+                const selectedIds = getSelectedRawIds();
+                if (!selectedIds.length) return;
+                if (!window.confirm(i18n_settings.deleteConfirm)) return;
+
+                bulkDeleteBtn.disabled = true;
+                const fd = new FormData();
+                fd.append('action', 'dashd_delete_raw_records');
+                fd.append('nonce', deleteRawNonce);
+                fd.append('ids', selectedIds.join(','));
+
+                try {
+                    const res = await fetch(ajaxurl, { method: 'POST', body: fd });
+                    const json = await res.json();
+                    if (json && json.success) {
+                        selectedIds.forEach((id) => {
+                            const row = document.querySelector(`tr[data-raw-record-id="${id}"]`);
+                            if (row) row.remove();
+                        });
+                        updateBulkUiState();
+                    } else {
+                        alert(i18n_settings.errorDelete);
+                    }
+                } catch (e) {
+                    alert(i18n_settings.errorDeleteNet);
+                } finally {
+                    updateBulkUiState();
+                }
+            });
+        }
 
         document.querySelectorAll('.dashd-inline-edit').forEach(container => {
             const viewMode = container.querySelector('.dashd-view-mode');
@@ -750,6 +846,8 @@ function dashd_render_sources_tab($sources) {
                 if (e.key === 'Enter') { e.preventDefault(); container.querySelector('.dashd-save-trigger').click(); }
             });
         });
+
+        updateBulkUiState();
     });
     </script>
     <?php
@@ -1394,6 +1492,56 @@ function dashd_handle_update_raw_value() {
     } else {
         wp_send_json_error();
     }
+}
+
+add_action('wp_ajax_dashd_delete_raw_records', 'dashd_handle_delete_raw_records');
+function dashd_handle_delete_raw_records() {
+    if (function_exists('dashd_enforce_http_method')) {
+        dashd_enforce_http_method('POST', true);
+    }
+
+    if (!current_user_can('manage_options')) {
+        if (function_exists('dashd_forbidden_response')) {
+            dashd_forbidden_response(true);
+        }
+        wp_die(__('Access denied', 'dashd-analytics-pro'));
+    }
+    check_ajax_referer('dashd_delete_raw_records', 'nonce');
+    global $wpdb;
+
+    $ids_raw = isset($_POST['ids']) ? (string) wp_unslash($_POST['ids']) : '';
+    $ids = [];
+    foreach (preg_split('/[,\s]+/', $ids_raw, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $part) {
+        $id = (int) $part;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+        if (count($ids) >= 1000) {
+            break;
+        }
+    }
+    $ids = array_values($ids);
+
+    if (empty($ids)) {
+        wp_send_json_error(['msg' => __('No valid record IDs provided.', 'dashd-analytics-pro')]);
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+    $sql = "DELETE FROM {$wpdb->prefix}dashd_data_records WHERE id IN ($placeholders)";
+    $deleted = $wpdb->query($wpdb->prepare($sql, ...$ids));
+
+    if ($deleted === false) {
+        wp_send_json_error(['msg' => __('Failed to delete records.', 'dashd-analytics-pro')]);
+    }
+
+    if (function_exists('dashd_clear_all_caches')) {
+        dashd_clear_all_caches();
+    }
+
+    wp_send_json_success([
+        'deleted' => (int) $deleted,
+        'ids' => $ids,
+    ]);
 }
 
 add_action('admin_post_dashd_export_csv', 'dashd_handle_export_csv');
