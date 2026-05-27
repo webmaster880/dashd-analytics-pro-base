@@ -28,6 +28,10 @@ All notable changes to this project are documented in this file.
 - `get_dashd_periods_split` response extended with period availability metadata:
   - `year_quarters` map of available quarters per year;
   - `latest` period object (`year` + `quarter`) for deterministic default selection.
+- GitHub-based plugin updater module:
+  - WordPress admin now can show new-version notifications from GitHub Releases;
+  - supports private repositories via token (`DASHD_GITHUB_TOKEN`);
+  - update metadata and plugin info are injected through native WP update hooks.
 
 ### Fixed
 - Multi-indicator default period selection:

@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.7.27`
+- Stable version: `11.8.0`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -181,6 +181,31 @@ Admin/AJAX:
 
 ---
 
+## GitHub Auto Updates (WP Admin)
+
+Плагин поддерживает уведомления о новой версии в админке WordPress и обновление из интерфейса через GitHub Releases.
+
+По умолчанию используется репозиторий:
+
+- `webmaster880/dashd-analytics-pro-base`
+
+Для production рекомендуется явно задать параметры в `wp-config.php`:
+
+```php
+define('DASHD_GITHUB_REPO', 'webmaster880/dashd-analytics-pro-base');
+define('DASHD_GITHUB_BRANCH', 'main');
+define('DASHD_GITHUB_TOKEN', 'ghp_xxx'); // optional for private repo
+```
+
+Notes:
+
+- Для публичного репозитория токен не обязателен (но снижает риск rate-limit).
+- Для приватного репозитория токен обязателен.
+- Токен должен иметь как минимум read-доступ к репозиторию (Fine-grained PAT: repository `Contents: Read`).
+- Для корректного auto-update релиз должен содержать ZIP-asset плагина (рекомендуемый формат: `dashd-analytics-pro-vX.Y.Z.zip`).
+
+---
+
 ## Release Build
 
 В проекте используются:
@@ -228,7 +253,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.7.27`
+Latest release: `11.8.0`
 ---
 
 ## Notes

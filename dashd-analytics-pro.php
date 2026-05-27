@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.7.27
+ * Version: 11.8.0
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,10 +16,21 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.7.27');
+define('DASHD_VERSION', '11.8.0');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.6');
+define('DASHD_FILE', __FILE__);
 define('DASHD_PATH', plugin_dir_path(__FILE__));
 define('DASHD_URL', plugin_dir_url(__FILE__));
+
+if (!defined('DASHD_GITHUB_REPO')) {
+    define('DASHD_GITHUB_REPO', 'webmaster880/dashd-analytics-pro-base');
+}
+if (!defined('DASHD_GITHUB_BRANCH')) {
+    define('DASHD_GITHUB_BRANCH', 'main');
+}
+if (!defined('DASHD_GITHUB_TOKEN')) {
+    define('DASHD_GITHUB_TOKEN', '');
+}
 
 // Загрузка локализации
 add_action('plugins_loaded', 'dashd_load_textdomain');
@@ -510,6 +521,11 @@ require_once DASHD_PATH . 'includes/integration-helpers.php';
 require_once DASHD_PATH . 'includes/admin-constructor.php';
 require_once DASHD_PATH . 'includes/analytics-api.php';
 require_once DASHD_PATH . 'includes/widget-renderer.php';
+require_once DASHD_PATH . 'includes/github-updater.php';
+
+if (function_exists('dashd_register_github_updater')) {
+    dashd_register_github_updater(DASHD_FILE, DASHD_VERSION);
+}
 
 add_shortcode('dashd_widget', 'dashd_render_front_widget');
 register_activation_hook(__FILE__, 'dashd_init_analytical_db');
