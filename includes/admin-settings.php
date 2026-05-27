@@ -447,6 +447,34 @@ function dashd_render_sources_tab($sources) {
         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id=c.id 
         WHERE r.source_key=%s ORDER BY $order_sql LIMIT %d, %d", $src_filter, $offset, $per_page));
 
+    $indicator_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT DISTINCT i.id, i.name_en
+         FROM {$wpdb->prefix}dashd_data_records r
+         JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
+         WHERE r.source_key = %s
+         ORDER BY COALESCE(i.sort_order, 0) ASC, i.name_en ASC",
+        $src_filter
+    ));
+    if (empty($indicator_rows)) {
+        $indicator_rows = $wpdb->get_results(
+            "SELECT id, name_en FROM {$wpdb->prefix}dashd_indicators ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
+        );
+    }
+
+    $country_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT DISTINCT c.id, c.name_en
+         FROM {$wpdb->prefix}dashd_data_records r
+         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+         WHERE r.source_key = %s
+         ORDER BY COALESCE(c.sort_order, 0) ASC, c.name_en ASC",
+        $src_filter
+    ));
+    if (empty($country_rows)) {
+        $country_rows = $wpdb->get_results(
+            "SELECT id, name_en FROM {$wpdb->prefix}dashd_countries ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
+        );
+    }
+
     $build_sort_url = function($col) use ($orderby, $order, $src_filter, $per_page) {
         $new_order = ($orderby === $col && $order === 'ASC') ? 'DESC' : 'ASC';
         return "?page=dashd-settings&tab=sources&source_filter={$src_filter}&per_page={$per_page}&orderby={$col}&order={$new_order}";
@@ -658,12 +686,62 @@ function dashd_render_sources_tab($sources) {
         </div>
     </div>
 
+    <div class="dashd-card" style="margin-top:15px; border:1px solid #e5e7eb; background:#fafbfc;">
+        <h4 style="margin:0 0 10px;"><?php esc_html_e('Manual Raw Data Entry', 'dashd-analytics-pro'); ?></h4>
+        <p style="margin:0 0 12px; color:#646970; font-size:12px;">
+            <?php esc_html_e('Add or update a single raw data point for the selected source.', 'dashd-analytics-pro'); ?>
+        </p>
+        <div style="display:grid; grid-template-columns: minmax(160px, 1.4fr) minmax(160px, 1.1fr) 90px 90px 140px auto; gap:10px; align-items:end;">
+            <label style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Indicator', 'dashd-analytics-pro'); ?></span>
+                <select id="dashd-add-raw-indicator" class="regular-text">
+                    <?php foreach ((array) $indicator_rows as $indicator_row): ?>
+                        <option value="<?php echo (int) $indicator_row->id; ?>"><?php echo esc_html((string) $indicator_row->name_en); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Country', 'dashd-analytics-pro'); ?></span>
+                <select id="dashd-add-raw-country" class="regular-text">
+                    <?php foreach ((array) $country_rows as $country_row): ?>
+                        <option value="<?php echo (int) $country_row->id; ?>"><?php echo esc_html((string) $country_row->name_en); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Year', 'dashd-analytics-pro'); ?></span>
+                <input type="number" id="dashd-add-raw-year" min="1900" max="2100" value="<?php echo esc_attr((string) current_time('Y')); ?>">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Quarter', 'dashd-analytics-pro'); ?></span>
+                <select id="dashd-add-raw-quarter">
+                    <option value="Q1">Q1</option>
+                    <option value="Q2">Q2</option>
+                    <option value="Q3">Q3</option>
+                    <option value="Q4" selected>Q4</option>
+                </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px;">
+                <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Value', 'dashd-analytics-pro'); ?></span>
+                <input type="number" step="any" id="dashd-add-raw-value" placeholder="0.00">
+            </label>
+            <button type="button" id="dashd-add-raw-submit" class="button button-primary" style="height:32px;">
+                <?php esc_html_e('Save Data Point', 'dashd-analytics-pro'); ?>
+            </button>
+        </div>
+    </div>
+
     <div class="dashd-table-container">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
-            <div style="font-size:12px; color:#646970;">
-                <?php esc_html_e('Select one or more rows to delete raw records in bulk.', 'dashd-analytics-pro'); ?>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px; padding:10px 12px; border:1px solid #f1c6c8; background:#fff7f7; border-radius:6px;">
+            <div>
+                <div style="font-size:13px; font-weight:600; color:#8a1f2d; margin-bottom:3px;">
+                    <?php esc_html_e('Bulk Delete Raw Data', 'dashd-analytics-pro'); ?>
+                </div>
+                <div style="font-size:12px; color:#7a1d2b;">
+                    <?php esc_html_e('Select one or more rows and delete them. This operation is irreversible.', 'dashd-analytics-pro'); ?>
+                </div>
             </div>
-            <button type="button" id="dashd-delete-selected-raw" class="button button-secondary" disabled style="display:flex; align-items:center; gap:6px;">
+            <button type="button" id="dashd-delete-selected-raw" class="button" disabled style="display:flex; align-items:center; gap:6px; border-color:#d63638; color:#d63638; background:#fff;">
                 <span class="dashicons dashicons-trash" style="font-size:16px; line-height:1;"></span>
                 <?php esc_html_e('Delete Selected', 'dashd-analytics-pro'); ?>
             </button>
@@ -717,10 +795,21 @@ function dashd_render_sources_tab($sources) {
             errorNet: "<?php echo esc_js(__('Network error during update.', 'dashd-analytics-pro')); ?>",
             deleteConfirm: "<?php echo esc_js(__('Delete selected records? This action cannot be undone.', 'dashd-analytics-pro')); ?>",
             errorDelete: "<?php echo esc_js(__('Error deleting selected records.', 'dashd-analytics-pro')); ?>",
-            errorDeleteNet: "<?php echo esc_js(__('Network error during delete.', 'dashd-analytics-pro')); ?>"
+            errorDeleteNet: "<?php echo esc_js(__('Network error during delete.', 'dashd-analytics-pro')); ?>",
+            addMissing: "<?php echo esc_js(__('Please fill all fields for manual entry.', 'dashd-analytics-pro')); ?>",
+            addFailed: "<?php echo esc_js(__('Failed to save raw data point.', 'dashd-analytics-pro')); ?>",
+            addNet: "<?php echo esc_js(__('Network error during raw data save.', 'dashd-analytics-pro')); ?>",
+            addSaved: "<?php echo esc_js(__('Raw data point saved. Table will be refreshed.', 'dashd-analytics-pro')); ?>"
         };
         const updateValueNonce = "<?php echo esc_js(wp_create_nonce('dashd_update_raw_value')); ?>";
         const deleteRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_delete_raw_records')); ?>";
+        const addRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_add_raw_record')); ?>";
+        const addRawIndicator = document.getElementById('dashd-add-raw-indicator');
+        const addRawCountry = document.getElementById('dashd-add-raw-country');
+        const addRawYear = document.getElementById('dashd-add-raw-year');
+        const addRawQuarter = document.getElementById('dashd-add-raw-quarter');
+        const addRawValue = document.getElementById('dashd-add-raw-value');
+        const addRawSubmit = document.getElementById('dashd-add-raw-submit');
         const bulkDeleteBtn = document.getElementById('dashd-delete-selected-raw');
         const selectAll = document.getElementById('dashd-raw-select-all');
 
@@ -795,6 +884,48 @@ function dashd_render_sources_tab($sources) {
                     alert(i18n_settings.errorDeleteNet);
                 } finally {
                     updateBulkUiState();
+                }
+            });
+        }
+
+        if (addRawSubmit) {
+            addRawSubmit.addEventListener('click', async function() {
+                const indicatorId = parseInt(addRawIndicator?.value || '0', 10);
+                const countryId = parseInt(addRawCountry?.value || '0', 10);
+                const year = parseInt(addRawYear?.value || '0', 10);
+                const quarter = String(addRawQuarter?.value || '').toUpperCase();
+                const value = String(addRawValue?.value || '').trim();
+
+                if (!indicatorId || !countryId || !year || !quarter || value === '') {
+                    alert(i18n_settings.addMissing);
+                    return;
+                }
+
+                const fd = new FormData();
+                fd.append('action', 'dashd_add_raw_record');
+                fd.append('nonce', addRawNonce);
+                fd.append('source_key', "<?php echo esc_js($src_filter); ?>");
+                fd.append('indicator_id', String(indicatorId));
+                fd.append('country_id', String(countryId));
+                fd.append('data_year', String(year));
+                fd.append('data_quarter', quarter);
+                fd.append('val', value);
+
+                addRawSubmit.disabled = true;
+
+                try {
+                    const res = await fetch(ajaxurl, { method: 'POST', body: fd });
+                    const json = await res.json();
+                    if (json && json.success) {
+                        alert(i18n_settings.addSaved);
+                        window.location.reload();
+                        return;
+                    }
+                    alert((json && json.data && json.data.msg) ? json.data.msg : i18n_settings.addFailed);
+                } catch (e) {
+                    alert(i18n_settings.addNet);
+                } finally {
+                    addRawSubmit.disabled = false;
                 }
             });
         }
@@ -1541,6 +1672,131 @@ function dashd_handle_delete_raw_records() {
     wp_send_json_success([
         'deleted' => (int) $deleted,
         'ids' => $ids,
+    ]);
+}
+
+add_action('wp_ajax_dashd_add_raw_record', 'dashd_handle_add_raw_record');
+function dashd_handle_add_raw_record() {
+    if (function_exists('dashd_enforce_http_method')) {
+        dashd_enforce_http_method('POST', true);
+    }
+
+    if (!current_user_can('manage_options')) {
+        if (function_exists('dashd_forbidden_response')) {
+            dashd_forbidden_response(true);
+        }
+        wp_die(__('Access denied', 'dashd-analytics-pro'));
+    }
+    check_ajax_referer('dashd_add_raw_record', 'nonce');
+    global $wpdb;
+
+    $source_key = isset($_POST['source_key'])
+        ? (function_exists('dashd_normalize_source_key') ? dashd_normalize_source_key((string) wp_unslash($_POST['source_key'])) : sanitize_key((string) wp_unslash($_POST['source_key'])))
+        : '';
+    if ($source_key === '') {
+        wp_send_json_error(['msg' => __('Invalid source key.', 'dashd-analytics-pro')]);
+    }
+
+    $source_exists = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_settings WHERE source_key = %s",
+        $source_key
+    ));
+    if ($source_exists < 1) {
+        wp_send_json_error(['msg' => __('Source does not exist.', 'dashd-analytics-pro')]);
+    }
+
+    $indicator_id = isset($_POST['indicator_id']) ? (int) $_POST['indicator_id'] : 0;
+    $country_id = isset($_POST['country_id']) ? (int) $_POST['country_id'] : 0;
+    $data_year = isset($_POST['data_year']) ? (int) $_POST['data_year'] : 0;
+    $data_quarter = isset($_POST['data_quarter']) ? strtoupper(trim((string) wp_unslash($_POST['data_quarter']))) : '';
+    $raw_val = isset($_POST['val']) ? (string) wp_unslash($_POST['val']) : '';
+
+    if ($indicator_id <= 0 || $country_id <= 0) {
+        wp_send_json_error(['msg' => __('Invalid indicator or country.', 'dashd-analytics-pro')]);
+    }
+    if ($data_year < 1900 || $data_year > 2100) {
+        wp_send_json_error(['msg' => __('Invalid year.', 'dashd-analytics-pro')]);
+    }
+    if (!in_array($data_quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+        wp_send_json_error(['msg' => __('Invalid quarter.', 'dashd-analytics-pro')]);
+    }
+
+    $normalized_val = trim((string) str_replace([' ', ','], ['', '.'], $raw_val));
+    if ($normalized_val === '' || preg_match('/^-?(?:\d+|\d*\.\d+)$/', $normalized_val) !== 1) {
+        wp_send_json_error(['msg' => __('Invalid numeric value.', 'dashd-analytics-pro')]);
+    }
+    $val = (float) $normalized_val;
+    if (!is_finite($val)) {
+        wp_send_json_error(['msg' => __('Numeric value is out of allowed range.', 'dashd-analytics-pro')]);
+    }
+
+    $max_abs_value = (float) apply_filters('dashd_max_raw_value_abs', 1000000000000.0);
+    if (!is_finite($max_abs_value) || $max_abs_value <= 0) {
+        $max_abs_value = 1000000000000.0;
+    }
+    if (abs($val) > $max_abs_value) {
+        wp_send_json_error(['msg' => __('Numeric value is out of allowed range.', 'dashd-analytics-pro')]);
+    }
+
+    $indicator_exists = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_indicators WHERE id = %d",
+        $indicator_id
+    ));
+    $country_exists = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_countries WHERE id = %d",
+        $country_id
+    ));
+    if ($indicator_exists < 1 || $country_exists < 1) {
+        wp_send_json_error(['msg' => __('Selected indicator or country does not exist.', 'dashd-analytics-pro')]);
+    }
+
+    $existing_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}dashd_data_records
+         WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s
+         LIMIT 1",
+        $source_key,
+        $indicator_id,
+        $country_id,
+        $data_year,
+        $data_quarter
+    ));
+
+    $result = false;
+    $mode = 'inserted';
+    if ($existing_id > 0) {
+        $result = $wpdb->update(
+            "{$wpdb->prefix}dashd_data_records",
+            ['val' => $val, 'record_date' => current_time('mysql')],
+            ['id' => $existing_id]
+        );
+        $mode = 'updated';
+    } else {
+        $result = $wpdb->insert(
+            "{$wpdb->prefix}dashd_data_records",
+            [
+                'source_key' => $source_key,
+                'indicator_id' => $indicator_id,
+                'country_id' => $country_id,
+                'data_year' => $data_year,
+                'data_quarter' => $data_quarter,
+                'val' => $val,
+                'record_date' => current_time('mysql'),
+            ],
+            ['%s', '%d', '%d', '%d', '%s', '%f', '%s']
+        );
+    }
+
+    if ($result === false) {
+        wp_send_json_error(['msg' => __('Failed to save raw data point.', 'dashd-analytics-pro')]);
+    }
+
+    if (function_exists('dashd_clear_all_caches')) {
+        dashd_clear_all_caches();
+    }
+
+    wp_send_json_success([
+        'mode' => $mode,
+        'id' => $existing_id > 0 ? $existing_id : (int) $wpdb->insert_id,
     ]);
 }
 
