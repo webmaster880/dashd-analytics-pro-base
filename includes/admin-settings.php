@@ -53,11 +53,11 @@ function dashd_admin_settings_page() {
 
         <h2 class="nav-tab-wrapper">
             <a href="?page=dashd-settings&tab=sources" class="nav-tab <?php echo $active_tab == 'sources' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Data Sources & Raw Data', 'dashd-analytics-pro'); ?></a>
-            <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=countries" class="nav-tab <?php echo $active_tab == 'countries' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Countries Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=indicators" class="nav-tab <?php echo $active_tab == 'indicators' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Indicators Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=branding" class="nav-tab <?php echo $active_tab == 'branding' ? 'nav-tab-active' : ''; ?>" style="color:#1e87f0;"><?php esc_html_e('PDF Branding 🎨', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=leads" class="nav-tab <?php echo $active_tab == 'leads' ? 'nav-tab-active' : ''; ?>" style="color:#10b981;"><?php esc_html_e('Leads (Emails) 📩', 'dashd-analytics-pro'); ?></a>
+            <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
         </h2>
 
         <?php if ($active_tab !== 'branding' && $active_tab !== 'leads' && $active_tab !== 'logs'): ?>
