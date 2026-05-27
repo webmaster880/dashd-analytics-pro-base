@@ -251,7 +251,7 @@ if (!class_exists('DashD_Github_Updater')) {
                 'requires_php' => '',
             ];
 
-            set_transient($cache_key, $data, (int) apply_filters('dashd_github_updater_cache_ttl', 6 * HOUR_IN_SECONDS));
+            set_transient($cache_key, $data, dashd_github_updater_cache_ttl_seconds());
             return $data;
         }
 
@@ -451,5 +451,41 @@ if (!function_exists('dashd_github_updater_check_now')) {
         }
 
         return new WP_Error('dashd_github_update_unavailable', 'Unable to run WordPress update checker.');
+    }
+}
+
+if (!function_exists('dashd_github_updater_cache_ttl_seconds')) {
+    /**
+     * Resolve updater cache TTL in seconds (bounded to 12..24 hours).
+     *
+     * @return int
+     */
+    function dashd_github_updater_cache_ttl_seconds() {
+        $hours = 12;
+
+        if (defined('DASHD_GITHUB_UPDATER_CACHE_TTL_HOURS') && is_numeric((string) DASHD_GITHUB_UPDATER_CACHE_TTL_HOURS)) {
+            $hours = (int) DASHD_GITHUB_UPDATER_CACHE_TTL_HOURS;
+        }
+
+        $saved_hours = get_option('dashd_github_updater_cache_ttl_hours', null);
+        if ($saved_hours !== null && is_numeric((string) $saved_hours)) {
+            $hours = (int) $saved_hours;
+        }
+
+        $hours = (int) apply_filters('dashd_github_updater_cache_ttl_hours', $hours);
+        $hours = max(12, min(24, $hours));
+
+        $seconds = $hours * HOUR_IN_SECONDS;
+        $seconds = (int) apply_filters('dashd_github_updater_cache_ttl', $seconds, $hours);
+        $min_seconds = 12 * HOUR_IN_SECONDS;
+        $max_seconds = 24 * HOUR_IN_SECONDS;
+
+        if ($seconds < $min_seconds) {
+            $seconds = $min_seconds;
+        } elseif ($seconds > $max_seconds) {
+            $seconds = $max_seconds;
+        }
+
+        return $seconds;
     }
 }

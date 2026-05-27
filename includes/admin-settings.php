@@ -11,6 +11,10 @@ function dashd_admin_settings_page() {
     $sources = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}dashd_settings");
     $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'sources';
     $status = isset($_GET['status']) ? sanitize_key($_GET['status']) : '';
+    $updates_ttl_hours = (int) get_option('dashd_github_updater_cache_ttl_hours', 12);
+    if ($updates_ttl_hours < 12 || $updates_ttl_hours > 24) {
+        $updates_ttl_hours = 12;
+    }
     ?>
     <div class="wrap">
         <div class="dashd-admin-header">
@@ -24,6 +28,23 @@ function dashd_admin_settings_page() {
                         <span class="dashicons dashicons-update"></span>
                         <?php esc_html_e('Check updates now', 'dashd-analytics-pro'); ?>
                     </button>
+                </form>
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0; display:flex; align-items:center; gap:6px;">
+                    <input type="hidden" name="action" value="dashd_save_update_cache_ttl">
+                    <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
+                    <?php wp_nonce_field('dashd_save_update_cache_ttl', 'dashd_save_update_cache_ttl_nonce'); ?>
+                    <label for="dashd-updates-ttl-hours" style="font-size:12px; color:#646970;"><?php esc_html_e('Update cache (hours)', 'dashd-analytics-pro'); ?></label>
+                    <input
+                        id="dashd-updates-ttl-hours"
+                        type="number"
+                        name="updates_ttl_hours"
+                        min="12"
+                        max="24"
+                        step="1"
+                        value="<?php echo esc_attr((string) $updates_ttl_hours); ?>"
+                        style="width:72px;"
+                    >
+                    <button type="submit" class="button button-secondary"><?php esc_html_e('Save TTL', 'dashd-analytics-pro'); ?></button>
                 </form>
             </div>
         </div>
@@ -66,6 +87,15 @@ function dashd_admin_settings_page() {
         <?php endif; ?>
         <?php if ($status === 'updates_check_failed'): ?>
             <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Update check failed. Verify GitHub repository settings/token and try again.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'updates_ttl_saved'): ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Update cache TTL saved. New value is active.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'updates_ttl_invalid'): ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Invalid cache TTL value. Use a number between 12 and 24 hours.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+        <?php if ($status === 'updates_ttl_failed'): ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Failed to save update cache TTL. Please try again.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
 
         <h2 class="nav-tab-wrapper">
@@ -2478,5 +2508,67 @@ function dashd_handle_check_updates() {
     }
 
     wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=' . rawurlencode($status)));
+    exit;
+}
+
+add_action('admin_post_dashd_save_update_cache_ttl', 'dashd_handle_save_update_cache_ttl');
+function dashd_handle_save_update_cache_ttl() {
+    if (function_exists('dashd_enforce_http_method')) {
+        dashd_enforce_http_method('POST');
+    }
+
+    if (!current_user_can('manage_options')) {
+        if (function_exists('dashd_forbidden_response')) {
+            dashd_forbidden_response(false);
+        }
+        wp_die(__('Access denied', 'dashd-analytics-pro'));
+    }
+
+    check_admin_referer('dashd_save_update_cache_ttl', 'dashd_save_update_cache_ttl_nonce');
+
+    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'logs'];
+    $tab = isset($_POST['tab']) ? sanitize_key((string) $_POST['tab']) : 'sources';
+    if (!in_array($tab, $allowed_tabs, true)) {
+        $tab = 'sources';
+    }
+
+    $ttl_raw = isset($_POST['updates_ttl_hours']) ? wp_unslash((string) $_POST['updates_ttl_hours']) : '';
+    if ($ttl_raw === '' || !is_numeric($ttl_raw)) {
+        wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=updates_ttl_invalid'));
+        exit;
+    }
+
+    $ttl_hours = (int) $ttl_raw;
+    if ($ttl_hours < 12 || $ttl_hours > 24) {
+        wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=updates_ttl_invalid'));
+        exit;
+    }
+
+    $saved = update_option('dashd_github_updater_cache_ttl_hours', $ttl_hours, false);
+    if ($saved === false) {
+        $existing = (int) get_option('dashd_github_updater_cache_ttl_hours', 12);
+        if ($existing !== $ttl_hours) {
+            wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=updates_ttl_failed'));
+            exit;
+        }
+    }
+
+    $repo = defined('DASHD_GITHUB_REPO') ? (string) DASHD_GITHUB_REPO : '';
+    $repo = trim((string) apply_filters('dashd_github_repo', $repo));
+    $branch = defined('DASHD_GITHUB_BRANCH') ? (string) DASHD_GITHUB_BRANCH : 'main';
+    $branch = trim((string) apply_filters('dashd_github_branch', $branch));
+    if ($branch === '') {
+        $branch = 'main';
+    }
+
+    if ($repo !== '' && preg_match('/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i', $repo) === 1 && function_exists('dashd_github_updater_cache_key')) {
+        delete_transient(dashd_github_updater_cache_key($repo, $branch));
+    }
+    delete_site_transient('update_plugins');
+    if (function_exists('wp_clean_plugins_cache')) {
+        wp_clean_plugins_cache(true);
+    }
+
+    wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=updates_ttl_saved'));
     exit;
 }
