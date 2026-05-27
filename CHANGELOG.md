@@ -35,6 +35,10 @@ All notable changes to this project are documented in this file.
  - `Settings` header now includes `Check updates now` action to force refresh plugin update metadata.
 - Release automation in `build.sh`:
   - new `--publish-release` option creates/pushes tag and publishes (or updates) GitHub Release ZIP asset via `gh` CLI.
+- GitHub updater cache TTL control:
+  - new admin setting in `Analytics Pro → Settings` (`Update cache (hours)`);
+  - saved option `dashd_github_updater_cache_ttl_hours`;
+  - bounded cache window `12..24` hours with instant cache reset after save.
 
 ### Fixed
 - Multi-indicator default period selection:

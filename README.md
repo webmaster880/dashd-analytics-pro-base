@@ -204,6 +204,31 @@ Notes:
 - Токен должен иметь как минимум read-доступ к репозиторию (Fine-grained PAT: repository `Contents: Read`).
 - Для корректного auto-update релиз должен содержать ZIP-asset плагина (рекомендуемый формат: `dashd-analytics-pro-vX.Y.Z.zip`).
 
+### Update-check cache TTL (12-24h)
+
+Теперь TTL кэша проверки GitHub release можно настраивать:
+
+- через админку: `Analytics Pro → Settings` (`Update cache (hours)` + `Save TTL`);
+- через `wp-config.php`:
+
+```php
+define('DASHD_GITHUB_UPDATER_CACHE_TTL_HOURS', 24);
+```
+
+- через фильтры:
+
+```php
+add_filter('dashd_github_updater_cache_ttl_hours', function ($hours) {
+    return 18; // 12..24
+});
+
+add_filter('dashd_github_updater_cache_ttl', function ($seconds, $hours) {
+    return 24 * HOUR_IN_SECONDS; // 12h..24h
+}, 10, 2);
+```
+
+Важно: итоговое значение всегда ограничивается диапазоном `12..24` часов.
+
 ### How To Create `DASHD_GITHUB_TOKEN` (step-by-step)
 
 1. Open GitHub web UI:
