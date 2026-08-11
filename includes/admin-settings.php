@@ -487,6 +487,10 @@ function dashd_render_sources_tab($sources) {
         : ((function_exists('dashd_normalize_source_key') ? dashd_normalize_source_key(($sources[0]->source_key ?? '')) : ($sources[0]->source_key ?? '')));
     $orderby    = isset($_GET['orderby']) ? sanitize_key($_GET['orderby']) : 'data_year';
     $order      = (isset($_GET['order']) && strtoupper($_GET['order']) === 'ASC') ? 'ASC' : 'DESC';
+    $quality_filter = isset($_GET['quality_filter']) ? sanitize_key((string) $_GET['quality_filter']) : 'all';
+    if (!in_array($quality_filter, ['all', 'negative'], true)) {
+        $quality_filter = 'all';
+    }
     $paged      = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page_requested = isset($_GET['per_page']) ? max(1, intval($_GET['per_page'])) : 50;
     $max_per_page = (int) apply_filters('dashd_admin_max_per_page', 200);
@@ -511,14 +515,22 @@ function dashd_render_sources_tab($sources) {
     if ($orderby === 'ind') $order_sql = "i.name_en $order";
     elseif ($orderby === 'cty') $order_sql = "c.name_en $order";
 
-    $total_items = $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM {$wpdb->prefix}dashd_data_records r WHERE r.source_key=%s", $src_filter));
+    $raw_where_sql = 'r.source_key=%s';
+    $raw_where_args = [$src_filter];
+    if ($quality_filter === 'negative') {
+        $raw_where_sql .= ' AND r.val < 0';
+    }
+
+    $total_items = $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM {$wpdb->prefix}dashd_data_records r WHERE {$raw_where_sql}", ...$raw_where_args));
+    $negative_items = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM {$wpdb->prefix}dashd_data_records r WHERE r.source_key=%s AND r.val < 0", $src_filter));
     $total_pages = ceil($total_items / $per_page);
 
+    $records_args = array_merge($raw_where_args, [$offset, $per_page]);
     $records = $wpdb->get_results($wpdb->prepare("
         SELECT r.*, i.name_en as ind, c.name_en as cty FROM {$wpdb->prefix}dashd_data_records r 
         JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id=i.id 
         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id=c.id 
-        WHERE r.source_key=%s ORDER BY $order_sql LIMIT %d, %d", $src_filter, $offset, $per_page));
+        WHERE {$raw_where_sql} ORDER BY $order_sql LIMIT %d, %d", ...$records_args));
 
     $indicator_rows = $wpdb->get_results($wpdb->prepare(
         "SELECT DISTINCT i.id, i.name_en
@@ -548,9 +560,9 @@ function dashd_render_sources_tab($sources) {
         );
     }
 
-    $build_sort_url = function($col) use ($orderby, $order, $src_filter, $per_page) {
+    $build_sort_url = function($col) use ($orderby, $order, $src_filter, $per_page, $quality_filter) {
         $new_order = ($orderby === $col && $order === 'ASC') ? 'DESC' : 'ASC';
-        return "?page=dashd-settings&tab=sources&source_filter={$src_filter}&per_page={$per_page}&orderby={$col}&order={$new_order}";
+        return "?page=dashd-settings&tab=sources&source_filter={$src_filter}&per_page={$per_page}&quality_filter={$quality_filter}&orderby={$col}&order={$new_order}";
     };
     
     $get_sort_icon = function($col) use ($orderby, $order) {
@@ -746,6 +758,17 @@ function dashd_render_sources_tab($sources) {
                         <option value="500" <?php selected($per_page, 500); ?>>500</option>
                     </select>
                 </div>
+
+                <div style="display:flex; align-items:center; gap:8px; border-left: 1px solid #dcdde1; padding-left: 20px;">
+                    <label for="quality_filter_select" style="font-weight:600; margin:0;"><?php esc_html_e('Data quality:', 'dashd-analytics-pro'); ?></label>
+                    <select name="quality_filter" id="quality_filter_select" onchange="this.form.submit()" style="margin:0;">
+                        <option value="all" <?php selected($quality_filter, 'all'); ?>><?php esc_html_e('All records', 'dashd-analytics-pro'); ?></option>
+                        <option value="negative" <?php selected($quality_filter, 'negative'); ?>><?php esc_html_e('Negative values', 'dashd-analytics-pro'); ?></option>
+                    </select>
+                    <?php if ($negative_items > 0): ?>
+                        <span class="dashd-warning-badge"><?php echo esc_html(number_format_i18n($negative_items)); ?> <?php esc_html_e('warnings', 'dashd-analytics-pro'); ?></span>
+                    <?php endif; ?>
+                </div>
             </form>
         </div>
         <div class="tablenav-pages">
@@ -803,6 +826,9 @@ function dashd_render_sources_tab($sources) {
             <label style="display:flex; flex-direction:column; gap:4px;">
                 <span style="font-size:12px; font-weight:600;"><?php esc_html_e('Value', 'dashd-analytics-pro'); ?></span>
                 <input type="number" step="any" id="dashd-add-raw-value" placeholder="0.00">
+                <span id="dashd-add-raw-negative-warning" class="dashd-inline-warning" style="display:none;">
+                    <?php esc_html_e('Negative value: keep it for review and verify with the data owner.', 'dashd-analytics-pro'); ?>
+                </span>
             </label>
             <button type="button" id="dashd-add-raw-submit" class="button button-primary" style="height:32px;">
                 <?php esc_html_e('Save Data Point', 'dashd-analytics-pro'); ?>
@@ -839,7 +865,8 @@ function dashd_render_sources_tab($sources) {
             </thead>
             <tbody id="dashd-raw-tbody">
                 <?php if($records): foreach($records as $r): ?>
-                <tr data-raw-record-id="<?php echo (int) $r->id; ?>">
+                <?php $is_negative_raw = ((float) $r->val) < 0; ?>
+                <tr data-raw-record-id="<?php echo (int) $r->id; ?>" class="<?php echo $is_negative_raw ? 'dashd-raw-warning-row' : ''; ?>">
                     <td style="text-align:center;">
                         <input type="checkbox" class="dashd-raw-select" value="<?php echo (int) $r->id; ?>" title="<?php esc_attr_e('Select row', 'dashd-analytics-pro'); ?>">
                     </td>
@@ -850,6 +877,7 @@ function dashd_render_sources_tab($sources) {
                         <div class="dashd-inline-edit" data-id="<?php echo (int) $r->id; ?>">
                             <div class="dashd-view-mode" style="display:flex; align-items:center; gap:8px;">
                                 <strong class="dashd-current-val"><?php echo number_format($r->val, 2, '.', ' '); ?></strong>
+                                <span class="dashd-warning-badge dashd-negative-badge" style="<?php echo $is_negative_raw ? '' : 'display:none;'; ?>"><?php esc_html_e('Needs review', 'dashd-analytics-pro'); ?></span>
                                 <span class="dashicons dashicons-edit dashd-edit-trigger" title="<?php esc_attr_e('Edit Value', 'dashd-analytics-pro'); ?>"></span>
                             </div>
                             <div class="dashd-edit-mode" style="display:none; align-items:center; gap:5px;">
@@ -882,6 +910,8 @@ function dashd_render_sources_tab($sources) {
             addSavedUpdated: "<?php echo esc_js(__('Raw data point updated.', 'dashd-analytics-pro')); ?>",
             deleteSelected: "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>",
             itemsLabel: "<?php echo esc_js(__('items', 'dashd-analytics-pro')); ?>",
+            negativeReview: "<?php echo esc_js(__('Negative value: keep it for review and verify with the data owner.', 'dashd-analytics-pro')); ?>",
+            needsReview: "<?php echo esc_js(__('Needs review', 'dashd-analytics-pro')); ?>",
             emptyRows: "<?php echo esc_js(__('No records found for this source.', 'dashd-analytics-pro')); ?>"
         };
 
@@ -889,6 +919,7 @@ function dashd_render_sources_tab($sources) {
         const deleteRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_delete_raw_records')); ?>";
         const addRawNonce = "<?php echo esc_js(wp_create_nonce('dashd_add_raw_record')); ?>";
         const sourceKey = "<?php echo esc_js($src_filter); ?>";
+        const qualityFilter = "<?php echo esc_js($quality_filter); ?>";
 
         const addRawIndicator = document.getElementById('dashd-add-raw-indicator');
         const addRawCountry = document.getElementById('dashd-add-raw-country');
@@ -900,6 +931,7 @@ function dashd_render_sources_tab($sources) {
         const selectAll = document.getElementById('dashd-raw-select-all');
         const rawItemsCountEl = document.getElementById('dashd-raw-items-count');
         const rawTbody = document.getElementById('dashd-raw-tbody');
+        const addRawNegativeWarning = document.getElementById('dashd-add-raw-negative-warning');
 
         const escapeHtml = function(value) {
             return String(value === null || value === undefined ? '' : value)
@@ -1031,6 +1063,7 @@ function dashd_render_sources_tab($sources) {
                     const json = await res.json();
                     if (json && json.success) {
                         displayVal.textContent = json.data.formatted;
+                        applyNegativeState(container.closest('tr[data-raw-record-id]'), json.data.is_negative);
                         originalVal = newVal;
                         editMode.style.display = 'none';
                         viewMode.style.display = 'flex';
@@ -1052,6 +1085,27 @@ function dashd_render_sources_tab($sources) {
             });
         };
 
+        const isNegativeValue = function(value) {
+            const num = Number(String(value ?? '').replace(/\s+/g, '').replace(',', '.'));
+            return Number.isFinite(num) && num < 0;
+        };
+
+        const applyNegativeState = function(row, isNegative) {
+            if (!row) return;
+            if (qualityFilter === 'negative' && !isNegative) {
+                row.remove();
+                adjustItemsCount(-1);
+                ensureEmptyRowState();
+                updateBulkUiState();
+                return;
+            }
+            row.classList.toggle('dashd-raw-warning-row', !!isNegative);
+            const badge = row.querySelector('.dashd-negative-badge');
+            if (badge) {
+                badge.style.display = isNegative ? 'inline-flex' : 'none';
+            }
+        };
+
         const attachRowSelection = function(row) {
             if (!row) return;
             const checkbox = row.querySelector('.dashd-raw-select');
@@ -1061,10 +1115,12 @@ function dashd_render_sources_tab($sources) {
         };
 
         const renderInlineEditCell = function(rowData) {
+            const isNegative = !!rowData.is_negative;
             return '' +
                 '<div class="dashd-inline-edit" data-id="' + escapeHtml(rowData.id) + '">' +
                     '<div class="dashd-view-mode" style="display:flex; align-items:center; gap:8px;">' +
                         '<strong class="dashd-current-val">' + escapeHtml(rowData.val_formatted) + '</strong>' +
+                        '<span class="dashd-warning-badge dashd-negative-badge" style="' + (isNegative ? '' : 'display:none;') + '">' + escapeHtml(i18n_settings.needsReview) + '</span>' +
                         '<span class="dashicons dashicons-edit dashd-edit-trigger" title="<?php echo esc_attr__('Edit Value', 'dashd-analytics-pro'); ?>"></span>' +
                     '</div>' +
                     '<div class="dashd-edit-mode" style="display:none; align-items:center; gap:5px;">' +
@@ -1077,6 +1133,7 @@ function dashd_render_sources_tab($sources) {
 
         const upsertRawRow = function(rowData) {
             if (!rawTbody || !rowData || !rowData.id) return false;
+            if (qualityFilter === 'negative' && !rowData.is_negative) return false;
             const rowId = parseInt(rowData.id, 10);
             if (!Number.isInteger(rowId) || rowId <= 0) return false;
 
@@ -1107,6 +1164,7 @@ function dashd_render_sources_tab($sources) {
             if (indicatorCell) indicatorCell.textContent = rowData.indicator || '';
             if (countryCell) countryCell.textContent = rowData.country || '';
             if (valueCell) valueCell.innerHTML = renderInlineEditCell(rowData);
+            applyNegativeState(row, !!rowData.is_negative);
 
             const inlineEditor = row.querySelector('.dashd-inline-edit');
             attachInlineEdit(inlineEditor);
@@ -1215,6 +1273,14 @@ function dashd_render_sources_tab($sources) {
                     addRawSubmit.disabled = false;
                 }
             });
+        }
+
+        if (addRawValue && addRawNegativeWarning) {
+            const syncManualNegativeWarning = function() {
+                addRawNegativeWarning.style.display = isNegativeValue(addRawValue.value) ? 'block' : 'none';
+            };
+            addRawValue.addEventListener('input', syncManualNegativeWarning);
+            syncManualNegativeWarning();
         }
 
         ensureEmptyRowState();
@@ -1863,7 +1929,10 @@ function dashd_handle_update_raw_value() {
     
     if ($updated !== false) {
         if (function_exists('dashd_clear_all_caches')) dashd_clear_all_caches();
-        wp_send_json_success(['formatted' => number_format($val, 2, '.', ' ')]);
+        wp_send_json_success([
+            'formatted' => number_format($val, 2, '.', ' '),
+            'is_negative' => $val < 0,
+        ]);
     } else {
         wp_send_json_error();
     }
@@ -2058,6 +2127,7 @@ function dashd_handle_add_raw_record() {
             'country' => (string) $row->cty,
             'val_raw' => (string) $row->val,
             'val_formatted' => number_format((float) $row->val, 2, '.', ' '),
+            'is_negative' => ((float) $row->val) < 0,
         ];
     }
 

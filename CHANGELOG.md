@@ -27,6 +27,10 @@ All notable changes to this project are documented in this file.
   - years with `Q4` are treated as completed annual periods;
   - completed years aggregate all available quarters into one annual chart value;
   - years without `Q4` remain quarter-by-quarter in charts and trend tables.
+- Negative raw values are now treated as soft data quality warnings instead of being blocked:
+  - admin Raw Data rows with negative values are highlighted and marked as `Needs review`;
+  - frontend chart points/bars and detailed table cells show warning markers/tooltips;
+  - `Donut` view falls back to `Bar` and `Log` scale falls back to `Linear` when negative values are present.
 
 ### Added
 - New `Settings → Logs` management actions:

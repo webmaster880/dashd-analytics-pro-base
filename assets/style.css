@@ -136,6 +136,22 @@
 .dashd-table tr:nth-child(even) { background: var(--dashd-bg-light); }
 .dashd-table tr:hover td { background: #e0f2fe !important; color: #0369a1; }
 .dashd-total-col { font-weight: 800; background: #f1f5f9 !important; border-left: 2px solid #94a3b8 !important; color: #1e293b; }
+.dashd-cell-negative {
+    color: #9a3412;
+    font-weight: 700;
+}
+.dashd-cell-warning-badge {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: normal;
+}
 
 /* Конструктор */
 .con-sidebar { background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-radius: 8px; }
@@ -506,6 +522,34 @@
 .dashd-table td.dashd-sync-status--success { color: #46b450 !important; }
 .dashd-table td.dashd-sync-status--no-changes { color: #dba617 !important; }
 .dashd-table td.dashd-sync-status--other { color: #f56e28 !important; }
+
+/* Data quality soft warnings */
+.dashd-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #f59e0b;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.dashd-table tbody tr.dashd-raw-warning-row td {
+    background: #fff7ed !important;
+}
+.dashd-table tbody tr.dashd-raw-warning-row:hover td {
+    background: #ffedd5 !important;
+    color: #7c2d12;
+}
+.dashd-inline-warning {
+    color: #9a3412;
+    font-size: 11px;
+    line-height: 1.3;
+}
 
 /* ==========================================================================
    v9.0.0 Frontend: Gated Content Modal

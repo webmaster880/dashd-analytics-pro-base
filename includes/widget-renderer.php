@@ -337,11 +337,11 @@ function dashd_render_front_widget($atts) {
     if (!wp_script_is('chart.js', 'enqueued') && !wp_script_is('chart-js', 'enqueued') && !wp_script_is('chartjs', 'enqueued') && !wp_script_is('chart', 'enqueued')) {
         wp_enqueue_script('dashd-chart-js');
     }
-    
+
     if (!wp_script_is('html2canvas', 'enqueued') && !wp_script_is('html2canvas-js', 'enqueued')) {
         wp_enqueue_script('dashd-html2canvas');
     }
-    
+
     if (!wp_script_is('jspdf', 'enqueued') && !wp_script_is('jspdf-js', 'enqueued')) {
         wp_enqueue_script('dashd-jspdf');
     }
@@ -398,9 +398,9 @@ function dashd_render_front_widget($atts) {
 
     ob_start();
     ?>
-    <div id="<?php echo esc_attr($uid); ?>" class="dashd-widget-container uk-margin-large-bottom" 
+    <div id="<?php echo esc_attr($uid); ?>" class="dashd-widget-container uk-margin-large-bottom"
         data-key="<?php echo esc_attr($table); ?>" data-indicators="<?php echo esc_attr(implode(',', $active_indicator_specs)); ?>" data-lang="<?php echo esc_attr($lang); ?>" style="background: #fff; padding: 25px; border-radius: 8px; position: relative;">
-        
+
         <?php if ($gated === 'true'): ?>
         <div class="dashd-modal-overlay" id="gated-modal-<?php echo esc_attr($uid); ?>" data-html2canvas-ignore="true">
             <div class="dashd-modal-box">
@@ -426,7 +426,7 @@ function dashd_render_front_widget($atts) {
             <?php echo $logo_html; ?>
         </div>
         <?php endif; ?>
-        
+
         <div class="dashd-country-btns uk-margin-small-bottom uk-flex uk-flex-wrap" style="gap:5px;justify-content:center;"></div>
 
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-bottom dashd-widget-topbar">
@@ -503,6 +503,7 @@ function dashd_render_front_widget($atts) {
             </div>
             <canvas class="dashd-canvas"></canvas>
         </div>
+        <div class="dashd-data-quality-warning" style="display:none; margin-top:10px; padding:8px 12px; border:1px solid #fed7aa; border-radius:8px; background:#fff7ed; color:#9a3412; font-size:12px; font-weight:600;"></div>
 
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-top">
             <div style="display: flex; gap: 15px; font-size: 13px;" data-html2canvas-ignore="true">
@@ -528,7 +529,7 @@ function dashd_render_front_widget($atts) {
                 </table>
             </div>
         </div>
-        
+
         <div class="dashd-last-sync-time" style="font-size: 11px; color: #94a3b8; text-align: right; margin-top: 10px; font-style: italic;"></div>
 
         <?php if($signature): ?>
@@ -566,9 +567,13 @@ function dashd_render_front_widget($atts) {
             pdfLibsLoading: "<?php echo esc_js(__('PDF libraries are still loading. Please try again in a second.', 'dashd-analytics-pro')); ?>",
             errorPdf: "<?php echo esc_js(__('Error generating PDF.', 'dashd-analytics-pro')); ?>",
             errorServer: "<?php echo esc_js(__('Server connection error.', 'dashd-analytics-pro')); ?>",
-            errorGeneral: "<?php echo esc_js(__('An error occurred.', 'dashd-analytics-pro')); ?>"
+            errorGeneral: "<?php echo esc_js(__('An error occurred.', 'dashd-analytics-pro')); ?>",
+            negativeValueWarning: "<?php echo esc_js(__('Some values are negative and should be verified with the data owner.', 'dashd-analytics-pro')); ?>",
+            negativeValueTooltip: "<?php echo esc_js(__('Warning: negative value, needs review.', 'dashd-analytics-pro')); ?>",
+            donutNegativeFallback: "<?php echo esc_js(__('Donut view is not suitable for negative values. Showing bar view instead.', 'dashd-analytics-pro')); ?>",
+            logNegativeFallback: "<?php echo esc_js(__('Log scale is not suitable for negative values. Showing linear scale instead.', 'dashd-analytics-pro')); ?>"
         };
-        
+
         let chart = null, rawData = null, trendData = null,
             viewMode = config.viewMode, scaleMode = config.scaleMode,
             barOrientation = config.barOrientation || 'horizontal',
@@ -577,7 +582,7 @@ function dashd_render_front_widget($atts) {
         let periodYears = [];
         let periodQuarters = ['Q4', 'Q3', 'Q2', 'Q1'];
         let periodYearQuarterMap = {};
-            
+
         let sparklines = [];
         const hiddenLegendKeys = new Set();
         const controls = {
@@ -664,7 +669,7 @@ function dashd_render_front_widget($atts) {
         const formatNum = (value) => {
             if (value === null || value === undefined) return '';
             const locale = config.lang === 'en' ? 'en-US' : 'ru-RU';
-            return new Intl.NumberFormat(locale).format(Number(value)); 
+            return new Intl.NumberFormat(locale).format(Number(value));
         };
 
         const escapeHtml = (value) => String(value ?? '')
@@ -673,6 +678,89 @@ function dashd_render_front_widget($atts) {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+
+        const DATA_QUALITY_WARNING_COLOR = '#f97316';
+        const hasNegativeValues = (data) => {
+            if (!data || !Array.isArray(data.datasets)) return false;
+            return data.datasets.some((dataset) => {
+                const values = Array.isArray(dataset?.data) ? dataset.data : [];
+                return values.some((value) => {
+                    const num = Number(value);
+                    return Number.isFinite(num) && num < 0;
+                });
+            });
+        };
+        const isNegativeContextValue = (context) => {
+            const raw = Number(context?.raw ?? 0);
+            if (Number.isFinite(raw)) return raw < 0;
+            const parsed = context?.parsed;
+            if (typeof parsed === 'number') return parsed < 0;
+            if (parsed && typeof parsed === 'object') {
+                const x = Number(parsed.x);
+                const y = Number(parsed.y);
+                return (Number.isFinite(x) && x < 0) || (Number.isFinite(y) && y < 0);
+            }
+            return false;
+        };
+        const resolveDatasetColor = (color, context, fallback = '#1e87f0') => {
+            if (typeof color === 'function') {
+                try {
+                    return color(context);
+                } catch (e) {
+                    return fallback;
+                }
+            }
+            if (Array.isArray(color)) {
+                const idx = Number(context?.dataIndex ?? 0);
+                return color[Math.abs(idx) % color.length] || fallback;
+            }
+            return color || fallback;
+        };
+        const applyNegativeDatasetWarnings = (dataset, chartMode) => {
+            const next = { ...dataset };
+            const existingBorderColor = dataset.borderColor || dataset.backgroundColor || config.colors;
+
+            if (chartMode === 'line') {
+                next.pointRadius = (ctx) => isNegativeContextValue(ctx) ? 5 : 3;
+                next.pointHoverRadius = (ctx) => isNegativeContextValue(ctx) ? 7 : 5;
+                next.pointBorderWidth = (ctx) => isNegativeContextValue(ctx) ? 3 : 1;
+                next.pointBorderColor = (ctx) => isNegativeContextValue(ctx) ? DATA_QUALITY_WARNING_COLOR : (dataset.borderColor || '#fff');
+                next.pointBackgroundColor = dataset.borderColor || dataset.backgroundColor || DATA_QUALITY_WARNING_COLOR;
+                return next;
+            }
+
+            if (chartMode === 'bar') {
+                next.borderColor = (ctx) => isNegativeContextValue(ctx) ? DATA_QUALITY_WARNING_COLOR : resolveDatasetColor(existingBorderColor, ctx);
+                next.borderWidth = (ctx) => isNegativeContextValue(ctx) ? 2 : 0;
+                next.hoverBorderColor = (ctx) => isNegativeContextValue(ctx) ? DATA_QUALITY_WARNING_COLOR : resolveDatasetColor(existingBorderColor, ctx);
+                next.hoverBorderWidth = (ctx) => isNegativeContextValue(ctx) ? 3 : 1;
+                return next;
+            }
+
+            return next;
+        };
+        const updateDataQualityWarning = (hasWarnings, details = []) => {
+            const warning = root.querySelector('.dashd-data-quality-warning');
+            if (!warning) return;
+            if (!hasWarnings) {
+                warning.style.display = 'none';
+                warning.textContent = '';
+                return;
+            }
+
+            const parts = [i18n.negativeValueWarning].concat(details.filter(Boolean));
+            warning.textContent = parts.join(' ');
+            warning.style.display = 'block';
+        };
+        const renderValueWithWarning = (value) => {
+            const num = Number(value);
+            const isNegative = Number.isFinite(num) && num < 0;
+            const valueClass = isNegative ? 'dashd-cell-negative' : '';
+            const badge = isNegative
+                ? `<div class="dashd-cell-warning-badge">${escapeHtml(i18n.negativeValueTooltip)}</div>`
+                : '';
+            return `<div class="${valueClass}" style="font-size:13px;">${formatNum(value)}</div>${badge}`;
+        };
 
         const normalizeCountryName = (value) => String(value ?? '')
             .toLowerCase()
@@ -1029,7 +1117,7 @@ function dashd_render_front_widget($atts) {
         const loadData = async () => {
             showLoader();
             syncPeriodControlVisibility();
-            
+
             let url = `${config.ajax}?action=get_dashd_modern_data&key=${config.key}&lang=${config.lang}`;
             if (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length) {
                 url += `&indicators=${encodeURIComponent(config.indicatorSpecs.join(','))}`;
@@ -1045,9 +1133,9 @@ function dashd_render_front_widget($atts) {
             try {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-                
+
                 const json = await res.json();
-                
+
                 if (json.success) {
                     if (json.data && Array.isArray(json.data.countries)) {
                         json.data.countries = sortCountriesByPreference(json.data.countries);
@@ -1138,7 +1226,7 @@ function dashd_render_front_widget($atts) {
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             let d = { labels: [], datasets: [] };
-            
+
             let maxVal = 0; let y1Max = 0; let useSecondaryAxis = false;
             const isStackedBar = (viewMode === 'bar' && curCty === i18n.allCountries && barStacked);
             const isYearMode = isSingleIndicatorYearMode();
@@ -1342,11 +1430,26 @@ function dashd_render_front_widget($atts) {
                 }
             }
 
+            const chartHasNegativeValues = hasNegativeValues(d);
+            const effectiveViewMode = (viewMode === 'donut' && chartHasNegativeValues) ? 'bar' : viewMode;
+            const effectiveScaleMode = (scaleMode === 'logarithmic' && chartHasNegativeValues) ? 'linear' : scaleMode;
+            const effectiveBarIndexAxis = effectiveViewMode === 'bar' ? barIndexAxis : 'x';
+            const effectiveIsBarVertical = effectiveViewMode === 'bar' && effectiveBarIndexAxis === 'x';
+            const qualityWarningDetails = [];
+            if (viewMode === 'donut' && chartHasNegativeValues) {
+                qualityWarningDetails.push(i18n.donutNegativeFallback);
+            }
+            if (scaleMode === 'logarithmic' && chartHasNegativeValues) {
+                qualityWarningDetails.push(i18n.logNegativeFallback);
+            }
+            updateDataQualityWarning(chartHasNegativeValues, qualityWarningDetails);
+
             d.datasets = d.datasets.map((dataset, datasetIndex) => {
                 const labelPart = (typeof dataset.label === 'string' && dataset.label !== '') ? dataset.label : String(datasetIndex);
                 const legendKey = `${viewMode}|${curCty}|${labelPart}`;
+                const warnedDataset = applyNegativeDatasetWarnings(dataset, effectiveViewMode);
                 return {
-                    ...dataset,
+                    ...warnedDataset,
                     _dashdLegendKey: legendKey,
                     hidden: hiddenLegendKeys.has(legendKey)
                 };
@@ -1358,10 +1461,10 @@ function dashd_render_front_widget($atts) {
             else if (maxVal >= 1e6) { unitText = locUnits.m; div = 1e6; }
             else if (maxVal >= 1e3) { unitText = locUnits.k; div = 1e3; }
 
-            const valueAxisConfig = { 
-                type: scaleMode, stacked: isStackedBar,
+            const valueAxisConfig = {
+                type: effectiveScaleMode, stacked: isStackedBar,
                 title: { display: unitText !== '', text: unitText, font: { weight: 'bold', size: 13 }, color: Chart.defaults.color },
-                ticks: { callback: function(value) { return formatNum(value / div); } } 
+                ticks: { callback: function(value) { return formatNum(value / div); } }
             };
 
             let y1Config = null;
@@ -1372,12 +1475,12 @@ function dashd_render_front_widget($atts) {
                 else if (y1Max >= 1e3) { unitText1 = locUnits.k; div1 = 1e3; }
 
                 y1Config = {
-                    type: scaleMode, position: 'right', grid: { drawOnChartArea: false }, 
+                    type: effectiveScaleMode, position: 'right', grid: { drawOnChartArea: false },
                     title: { display: unitText1 !== '', text: unitText1, font: { weight: 'bold', size: 12 }, color: Chart.defaults.color },
                     ticks: { color: Chart.defaults.color, callback: function(value) { return formatNum(value / div1); } }
                 };
             }
-        
+
             // 1. ПРОВЕРЯЕМ ТЕМУ ПРЯМО ПЕРЕД ОТРИСОВКОЙ
             const isDark = document.documentElement.classList.contains('wp-dark-mode-active') || document.body.classList.contains('wp-dark-mode-active');
             const textColor = isDark ? '#94a3b8' : '#666';
@@ -1412,12 +1515,12 @@ function dashd_render_front_widget($atts) {
 
             // 2. ИНИЦИАЛИЗИРУЕМ ГРАФИК С УЧЕТОМ ВСЕХ НАСТРОЕК (LIN/LOG, ТЫСЯЧИ/МИЛЛИОНЫ И ТЕМА)
             chart = new Chart(ctx, {
-                type: viewMode === 'line' ? 'line' : (viewMode === 'donut' ? 'doughnut' : 'bar'),
+                type: effectiveViewMode === 'line' ? 'line' : (effectiveViewMode === 'donut' ? 'doughnut' : 'bar'),
                 data: d,
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    indexAxis: viewMode === 'bar' ? barIndexAxis : 'x', 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: effectiveViewMode === 'bar' ? effectiveBarIndexAxis : 'x',
                     animation: { onComplete: hideLoader },
                     color: textColor,
                     plugins: {
@@ -1463,26 +1566,29 @@ function dashd_render_front_widget($atts) {
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    label += formatNum(context.raw); 
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: viewMode !== 'donut' ? (viewMode === 'bar'
-                        ? (isBarVertical
-                            ? { x: categoryAxisConfig, y: valueAxisConfig }
-                            : { x: valueAxisConfig, y: categoryAxisConfig })
+	                                label: function(context) {
+	                                    let label = context.dataset.label || '';
+	                                    if (label) label += ': ';
+	                                    label += formatNum(context.raw);
+	                                    return label;
+	                                },
+	                                afterLabel: function(context) {
+	                                    return isNegativeContextValue(context) ? i18n.negativeValueTooltip : '';
+	                                }
+	                            }
+	                        }
+	                    },
+	                    scales: effectiveViewMode !== 'donut' ? (effectiveViewMode === 'bar'
+	                        ? (effectiveIsBarVertical
+	                            ? { x: categoryAxisConfig, y: valueAxisConfig }
+	                            : { x: valueAxisConfig, y: categoryAxisConfig })
                         : {
                             x: categoryAxisConfig,
                             y: valueAxisConfig,
                             ...(useSecondaryAxis ? { y1: y1Config } : {})
                         }) : {}
                 }
-            });            
+            });
 
             // Fallback: never leave transparent loader over canvas interactions.
             setTimeout(hideLoader, 350);
@@ -1497,9 +1603,9 @@ function dashd_render_front_widget($atts) {
 
             if (viewMode === 'line' && trendData && trendData.periods) {
                 thead.innerHTML = `<th>${escapeHtml(i18n.indicator)}</th>` + trendData.periods.map(p => `<th>${escapeHtml(p)}</th>`).join('') + `<th style="width:120px;">${escapeHtml(i18n.trend)}</th>`;
-                
+
                 tbody.innerHTML = Object.keys(trendData.indicators).map((ind, i) => {
-                    const historyData = getLineDataForCountry(ind); 
+                    const historyData = getLineDataForCountry(ind);
                     const cells = historyData.map((v, idx) => {
                         let qoqHtml = '';
                         if (idx > 0) {
@@ -1507,14 +1613,14 @@ function dashd_render_front_widget($atts) {
                             if (prev !== 0) {
                                 let pct = ((v - prev) / Math.abs(prev)) * 100;
                                 let color = pct >= 0 ? '#10b981' : '#ef4444';
-                                let arrow = pct >= 0 ? '&#9650;' : '&#9660;'; 
+                                let arrow = pct >= 0 ? '&#9650;' : '&#9660;';
                                 let bg = pct >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
                                 if (pct !== 0) {
                                     qoqHtml = `<div style="font-size:10px; color:${color}; background:${bg}; padding: 2px 5px; border-radius: 4px; display:inline-block; margin-top:4px; font-weight:600;">${arrow} ${Math.abs(pct).toFixed(1)}%</div>`;
                                 }
                             }
                         }
-                        return `<td><div style="font-size:13px;">${formatNum(v)}</div>${qoqHtml}</td>`;
+	                        return `<td>${renderValueWithWarning(v)}${qoqHtml}</td>`;
                     }).join('');
 
                     const color = config.colors[i % config.colors.length].trim();
@@ -1549,7 +1655,7 @@ function dashd_render_front_widget($atts) {
                     const cells = annual.countries.map((country) => {
                         const val = Number(annual.valuesByCountry[country]?.[rowIdx] || 0);
                         rowSum += val;
-                        return `<td><div style="font-size:13px;">${formatNum(val)}</div></td>`;
+	                        return `<td>${renderValueWithWarning(val)}</td>`;
                     }).join('');
                     const periodLabel = (annual.yearLabels && annual.yearLabels[rowIdx]) ? annual.yearLabels[rowIdx] : String(year);
                     return `<tr><td><strong>${escapeHtml(periodLabel)}</strong></td>${cells}<td class="dashd-total-col">${formatNum(rowSum)}</td></tr>`;
@@ -1560,7 +1666,7 @@ function dashd_render_front_widget($atts) {
                     let rowSum = 0;
                     const cells = rawData.countries.map(c => {
                         const cur = rawData.indicators[ind][c] || 0; rowSum += cur;
-                        
+
                         let yoyHtml = '';
                         if (rawData.previous && rawData.previous[ind] && rawData.previous[ind][c] !== undefined) {
                             const prev = rawData.previous[ind][c];
@@ -1571,7 +1677,7 @@ function dashd_render_front_widget($atts) {
                                 yoyHtml = `<div style="font-size:10px; color:${color}; font-weight:700; margin-top:4px;">${arrow} ${Math.abs(diff).toFixed(1)}% vs LY</div>`;
                             }
                         }
-                        return `<td><div style="font-size:13px;">${formatNum(cur)}</div>${yoyHtml}</td>`;
+	                        return `<td>${renderValueWithWarning(cur)}${yoyHtml}</td>`;
                     }).join('');
                     return `<tr><td><strong>${escapeHtml(ind)}</strong></td>${cells}<td class="dashd-total-col">${formatNum(rowSum)}</td></tr>`;
                 }).join('');
@@ -1770,7 +1876,7 @@ function dashd_render_front_widget($atts) {
                     for (let j = 0; j < cols.length; j++) {
                         let textDiv = cols[j].querySelector('div');
                         let data = textDiv ? textDiv.innerText : cols[j].innerText;
-                        if (j > 0) data = data.replace(/\s/g, ''); 
+                        if (j > 0) data = data.replace(/\s/g, '');
                         data = sanitizeCsvCell(data).replace(/"/g, '""');
                         row.push('"' + data + '"');
                     }
@@ -2020,9 +2126,9 @@ function dashd_render_front_widget($atts) {
                     </div>`;
                     return container;
                 };
-                
-                const wm = root.querySelector('.dashd-pdf-watermark'); 
-                const header = root.querySelector('.dashd-pdf-header'); 
+
+                const wm = root.querySelector('.dashd-pdf-watermark');
+                const header = root.querySelector('.dashd-pdf-header');
                 const footer = root.querySelector('.dashd-pdf-footer');
                 const tableWrapper = root.querySelector('.dashd-table-wrapper');
                 const tableScroll = root.querySelector('.dashd-table-scroll-container');
@@ -2030,7 +2136,7 @@ function dashd_render_front_widget($atts) {
                 let sparklineCanvasState = [];
                 let tempLinePdfTable = null;
                 const isLinePdfMode = viewMode === 'line';
-                
+
                 const viewToggleNode = root.querySelector('.dashd-toggle-view');
                 const viewScaleToggles = viewToggleNode ? viewToggleNode.parentNode : null;
                 const pWrap = root.querySelector('.dashd-periods-wrap');
@@ -2075,7 +2181,7 @@ function dashd_render_front_widget($atts) {
                     origHeaderJustify = header.style.justifyContent;
                     origHeaderAlign = header.style.alignItems;
                     origHeaderTextAlign = header.style.textAlign;
-                    
+
                     header.style.display = 'flex';
                     header.style.justifyContent = 'space-between';
                     header.style.alignItems = 'center';
@@ -2106,7 +2212,7 @@ function dashd_render_front_widget($atts) {
                     root.insertBefore(tempHeader, root.firstChild);
                 }
 
-                if(wm) wm.style.display = 'block'; 
+                if(wm) wm.style.display = 'block';
                 if(footer) footer.style.display = 'block';
                 if(tableWrapper) tableWrapper.style.display = isLinePdfMode ? 'none' : 'block';
                 if(tableScroll && !isLinePdfMode) {
@@ -2167,9 +2273,9 @@ function dashd_render_front_widget($atts) {
                 };
 
                 try {
-                    const canvas = await html2canvas(root, { 
-                        scale: 2, 
-                        useCORS: true, 
+                    const canvas = await html2canvas(root, {
+                        scale: 2,
+                        useCORS: true,
                         backgroundColor: '#ffffff',
                         windowWidth: root.scrollWidth,
                         windowHeight: root.scrollHeight,
@@ -2183,20 +2289,20 @@ function dashd_render_front_widget($atts) {
                     });
 
                     cleanupPdfDomState();
-                    
-                    const imgData = canvas.toDataURL('image/jpeg', 1.0); 
+
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
                     const { jsPDF } = window.jspdf;
-                    
+
                     const pdfWidth = 210;
                     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                    
+
                     const pdf = new jsPDF({
                         orientation: pdfWidth > pdfHeight ? 'l' : 'p',
                         unit: 'mm',
                         format: [pdfWidth, pdfHeight]
                     });
-                    
-                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight); 
+
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                     pdf.save(`dashboard_report_${new Date().toISOString().slice(0,10)}.pdf`);
                 } catch (e) {
                     console.error(e); alert(i18n.errorPdf);
@@ -2215,11 +2321,11 @@ function dashd_render_front_widget($atts) {
 
             if (isGated && modal) {
                 modal.querySelector('.dashd-modal-close').onclick = () => modal.classList.remove('active');
-                
+
                 submitBtn.onclick = async () => {
                     const em = emailInput.value.trim(); const hp = hpInput.value.trim();
                     if (!em || !em.includes('@')) { errorDiv.innerText = i18n.invalidEmail; errorDiv.style.display = 'block'; return; }
-                    
+
                     submitBtn.innerHTML = `<span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span> ${escapeHtml(i18n.verifying)}`;
                     submitBtn.style.opacity = '0.7'; submitBtn.style.pointerEvents = 'none'; errorDiv.style.display = 'none';
 
@@ -2249,13 +2355,13 @@ function dashd_render_front_widget($atts) {
         	if (typeof Chart === 'undefined') return; // Добавляем защиту: если Chart еще нет, выходим
             Chart.defaults.color = isDark ? '#94a3b8' : '#666';
             Chart.defaults.borderColor = isDark ? '#334155' : '#e5e5e5';
-            if (chart) renderChart(); 
+            if (chart) renderChart();
         };
 
             const observer = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.attributeName === 'class') {
-                        if (chart) renderChart(); 
+                        if (chart) renderChart();
                     }
                 });
             });
@@ -2290,9 +2396,9 @@ function dashd_render_front_widget($atts) {
                     }
                     const pRes = await fetch(periodsUrl);
                     if (!pRes.ok) throw new Error(`HTTP Error: ${pRes.status}`);
-                    
+
                     const pJson = await pRes.json();
-                    
+
                     if (pJson.success && pJson.data.years.length) {
                         periodYears = pJson.data.years
                             .slice()
@@ -2332,13 +2438,13 @@ function dashd_render_front_widget($atts) {
                             ? latestQuarter
                             : (availableForCurrent[0] || periodQuarters[0] || null);
                         ensureValidQuarterForYear();
-                        
+
                         const yBox = controls.yearButtonsBox;
                         const qBox = controls.quarterButtonsBox;
                         if (yBox && qBox) {
                             yBox.innerHTML = periodYears.map((y) => `<button class="dashd-ui-btn ${String(y)===String(curY)?'active-btn':''}" data-v="${escapeHtml(y)}">${escapeHtml(y)}</button>`).join('');
                             renderQuarterControlsForCurrentYear();
-                            
+
                             yBox.querySelectorAll('button').forEach((b) => {
                                 b.onclick = () => {
                                     curY = String(b.dataset.v || '');
@@ -2360,13 +2466,13 @@ function dashd_render_front_widget($atts) {
                         syncMobileSelectors();
                         syncPeriodControlVisibility();
                         await loadData();
-                    } else { 
+                    } else {
                         console.warn("DashD: No periods found or API returned success:false");
-                        hideLoader(); 
+                        hideLoader();
                     }
                 } catch (error) {
                     console.error("DashD Network/Parse Error in init:", error);
-                    hideLoader(); 
+                    hideLoader();
                 }
             };
 
