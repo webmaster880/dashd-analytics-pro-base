@@ -22,6 +22,7 @@ All notable changes to this project are documented in this file.
   - toolbar buttons now use consistent spacing, height, and alignment;
   - colored action/danger buttons now force white dashicons for better contrast.
   - plugin action submit buttons now override third-party admin CSS margins (for example WPML button rules) to prevent vertical jumping.
+  - header action buttons now explicitly preserve plugin hover/focus/active colors against third-party button rules.
 
 ### Added
 - New `Settings → Logs` management actions:

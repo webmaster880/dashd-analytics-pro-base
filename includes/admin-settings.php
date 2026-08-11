@@ -41,7 +41,7 @@ function dashd_admin_settings_page() {
                             </option>
                         <?php endfor; ?>
                     </select>
-                    <button type="submit" class="button button-secondary dashd-header-btn"><?php esc_html_e('Save TTL', 'dashd-analytics-pro'); ?></button>
+                    <button type="submit" class="button button-secondary dashd-header-btn dashd-admin-action-button"><?php esc_html_e('Save TTL', 'dashd-analytics-pro'); ?></button>
                 </form>
             </div>
         </div>

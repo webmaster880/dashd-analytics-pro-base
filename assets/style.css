@@ -52,10 +52,20 @@
 }
 
 .wp-core-ui .dashd-admin-action-button[type="submit"],
-.wp-core-ui .dashd-admin-danger-button[type="submit"] {
+.wp-core-ui .dashd-admin-danger-button[type="submit"],
+.wp-core-ui .dashd-header-actions .dashd-header-btn[type="submit"] {
     margin: 0 !important;
     line-height: 1.2 !important;
     vertical-align: middle !important;
+}
+
+.wp-core-ui .dashd-header-actions .dashd-header-btn.dashd-admin-action-button:hover,
+.wp-core-ui .dashd-header-actions .dashd-header-btn.dashd-admin-action-button:focus,
+.wp-core-ui .dashd-header-actions .dashd-header-btn.dashd-admin-action-button:active {
+    border-color: var(--dashd-admin-accent-dark) !important;
+    background: var(--dashd-admin-accent-dark) !important;
+    color: #fff !important;
+    box-shadow: none !important;
 }
 
 .dashd-admin-action-button:hover,
