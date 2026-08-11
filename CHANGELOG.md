@@ -18,6 +18,9 @@ All notable changes to this project are documented in this file.
 - Admin settings header polish:
   - `Update cache` control rebuilt as compact TTL dropdown (`12h..24h`) with unified styling next to `Check updates now`;
   - improved spacing/alignment and responsive behavior for header action controls.
+- Admin action buttons unified:
+  - toolbar buttons now use consistent spacing, height, and alignment;
+  - colored action/danger buttons now force white dashicons for better contrast.
 
 ### Added
 - New `Settings → Logs` management actions:
@@ -35,7 +38,7 @@ All notable changes to this project are documented in this file.
   - WordPress admin now can show new-version notifications from GitHub Releases;
   - supports private repositories via token (`DASHD_GITHUB_TOKEN`);
   - update metadata and plugin info are injected through native WP update hooks.
- - `Settings` header now includes `Check updates now` action to force refresh plugin update metadata.
+- `Settings` header now includes `Check updates now` action to force refresh plugin update metadata.
 - Release automation in `build.sh`:
   - new `--publish-release` option creates/pushes tag and publishes (or updates) GitHub Release ZIP asset via `gh` CLI.
 - GitHub updater cache TTL control:

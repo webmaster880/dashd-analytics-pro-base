@@ -24,7 +24,7 @@ function dashd_admin_settings_page() {
                     <input type="hidden" name="action" value="dashd_check_updates">
                     <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
                     <?php wp_nonce_field('dashd_check_updates', 'dashd_check_updates_nonce'); ?>
-                    <button type="submit" class="button button-secondary dashd-header-btn">
+                    <button type="submit" class="button button-secondary dashd-header-btn dashd-admin-action-button">
                         <span class="dashicons dashicons-update"></span>
                         <?php esc_html_e('Check updates now', 'dashd-analytics-pro'); ?>
                     </button>
@@ -108,23 +108,23 @@ function dashd_admin_settings_page() {
         <div class="dashd-toolbar">
             <div class="dashd-toolbar-group">
                 <p class="dashd-toolbar-title"><?php esc_html_e('Dictionaries Actions:', 'dashd-analytics-pro'); ?></p>
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0;">
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-toolbar-form">
                     <input type="hidden" name="action" value="dashd_export_csv">
                     <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
                     <?php wp_nonce_field('dashd_export_csv', 'dashd_export_csv_nonce'); ?>
-                    <button type="submit" class="button button-secondary" style="display:flex; align-items:center; gap:5px;">
+                    <button type="submit" class="button button-secondary dashd-admin-action-button">
                         <span class="dashicons dashicons-download"></span> <?php esc_html_e('Export Tab to CSV', 'dashd-analytics-pro'); ?>
                     </button>
                 </form>
             </div>
             <div class="dashd-toolbar-divider" style="display: none;"></div>
             <div class="dashd-toolbar-group">
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0;">
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" enctype="multipart/form-data" class="dashd-toolbar-form">
                     <input type="hidden" name="action" value="dashd_import_csv">
                     <input type="hidden" name="tab" value="<?php echo esc_attr($active_tab); ?>">
                     <?php wp_nonce_field('dashd_import_csv', 'dashd_import_csv_nonce'); ?>
                     <input type="file" name="csv_file" accept=".csv" required style="max-width: 250px;">
-                    <button type="submit" class="button button-primary" style="display:flex; align-items:center; gap:5px;">
+                    <button type="submit" class="button button-primary dashd-admin-action-button">
                         <span class="dashicons dashicons-upload"></span> <?php esc_html_e('Import Tab CSV', 'dashd-analytics-pro'); ?>
                     </button>
                 </form>
@@ -699,19 +699,19 @@ function dashd_render_sources_tab($sources) {
     <div class="dashd-toolbar" style="margin-top: 40px;">
         <div class="dashd-toolbar-group">
             <p class="dashd-toolbar-title"><?php esc_html_e('Raw Data Management:', 'dashd-analytics-pro'); ?></p>
-            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" style="margin:0;">
+            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-toolbar-form">
                 <input type="hidden" name="action" value="dashd_export_raw_data">
                 <?php wp_nonce_field('dashd_export_raw_data', 'dashd_export_raw_data_nonce'); ?>
-                <button type="submit" class="button button-secondary" style="display:flex; align-items:center; gap:5px;"><span class="dashicons dashicons-download"></span> <?php esc_html_e('Export All Raw Data', 'dashd-analytics-pro'); ?></button>
+                <button type="submit" class="button button-secondary dashd-admin-action-button"><span class="dashicons dashicons-download"></span> <?php esc_html_e('Export All Raw Data', 'dashd-analytics-pro'); ?></button>
             </form>
         </div>
         <div class="dashd-toolbar-divider"></div>
         <div class="dashd-toolbar-group">
-            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" enctype="multipart/form-data" style="display:flex; gap:10px; align-items:center; margin:0;">
+            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" enctype="multipart/form-data" class="dashd-toolbar-form">
                 <input type="hidden" name="action" value="dashd_import_raw_data">
                 <?php wp_nonce_field('dashd_import_raw_data', 'dashd_import_raw_data_nonce'); ?>
                 <input type="file" name="csv_file" accept=".csv" required style="max-width: 200px;">
-                <button type="submit" class="button button-primary" style="display:flex; align-items:center; gap:5px;"><span class="dashicons dashicons-upload"></span> <?php esc_html_e('Import Raw Data', 'dashd-analytics-pro'); ?></button>
+                <button type="submit" class="button button-primary dashd-admin-action-button"><span class="dashicons dashicons-upload"></span> <?php esc_html_e('Import Raw Data', 'dashd-analytics-pro'); ?></button>
             </form>
         </div>
     </div>

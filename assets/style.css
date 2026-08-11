@@ -2,6 +2,10 @@
 
 :root {
     --dashd-blue: #1e87f0;
+    --dashd-admin-accent: #2f8fa3;
+    --dashd-admin-accent-dark: #287d8f;
+    --dashd-admin-danger: #d63638;
+    --dashd-admin-danger-dark: #b32d2e;
     --dashd-border: #cbd5e1;
     --dashd-bg-light: #f8fafc;
     --dashd-text: #334155;
@@ -29,6 +33,64 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+}
+
+.dashd-admin-action-button,
+.dashd-card .button-primary,
+.dashd-toolbar .button-primary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 18px !important;
+    border-color: var(--dashd-admin-accent-dark) !important;
+    background: var(--dashd-admin-accent) !important;
+    color: #fff !important;
+    font-weight: 600;
+    box-shadow: none !important;
+}
+
+.dashd-admin-action-button:hover,
+.dashd-admin-action-button:focus,
+.dashd-card .button-primary:hover,
+.dashd-card .button-primary:focus,
+.dashd-toolbar .button-primary:hover,
+.dashd-toolbar .button-primary:focus {
+    border-color: var(--dashd-admin-accent-dark) !important;
+    background: var(--dashd-admin-accent-dark) !important;
+    color: #fff !important;
+}
+
+.dashd-admin-action-button .dashicons,
+.dashd-card .button-primary .dashicons,
+.dashd-toolbar .button-primary .dashicons {
+    color: #fff !important;
+}
+
+.dashd-admin-danger-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 18px !important;
+    border-color: var(--dashd-admin-danger) !important;
+    background: var(--dashd-admin-danger) !important;
+    color: #fff !important;
+    font-weight: 600;
+    box-shadow: none !important;
+}
+
+.dashd-admin-danger-button:hover,
+.dashd-admin-danger-button:focus {
+    border-color: var(--dashd-admin-danger-dark) !important;
+    background: var(--dashd-admin-danger-dark) !important;
+    color: #fff !important;
+}
+
+.dashd-admin-danger-button .dashicons {
+    color: #fff !important;
 }
 
 /* Общие кнопки */
@@ -387,10 +449,25 @@
 .dashd-stat-value.highlight { color: #2271b1; }
 
 /* Панели инструментов (Toolbars) */
-.dashd-toolbar { background: #f6f7f7; border: 1px solid #c3c4c7; border-radius: 8px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; margin: 25px 0; }
-.dashd-toolbar-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+.dashd-toolbar { background: #f6f7f7; border: 1px solid #c3c4c7; border-radius: 8px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; justify-content: space-between; margin: 25px 0; }
+.dashd-toolbar-group { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; min-height: 42px; }
+.dashd-toolbar-group:last-child { margin-left: auto; justify-content: flex-end; }
+.dashd-toolbar-form { display: flex; align-items: center; gap: 10px; margin: 0; }
+.dashd-toolbar-form input[type="file"] { max-width: 260px; }
 .dashd-toolbar-title { font-weight: 600; font-size: 14px; color: #1d2327; margin: 0; min-width: 140px; }
 .dashd-toolbar-divider { width: 1px; height: 30px; background: #dcdde1; }
+@media (max-width: 960px) {
+    .dashd-toolbar {
+        align-items: stretch;
+    }
+    .dashd-toolbar-group,
+    .dashd-toolbar-group:last-child,
+    .dashd-toolbar-form {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+}
 
 /* Стилизация инлайнового редактирования */
 .dashd-inline-edit { position: relative; transition: opacity 0.2s; }

@@ -16,7 +16,7 @@ function dashd_render_admin_sync_controls() {
             <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-action-card-form">
                 <input type="hidden" name="action" value="dashd_manual_sync">
                 <?php wp_nonce_field('dashd_manual_sync', 'dashd_manual_sync_nonce'); ?>
-                <button type="submit" class="button button-primary" style="display:flex; align-items:center; gap:5px;">
+                <button type="submit" class="button button-primary dashd-admin-action-button">
                     <span class="dashicons dashicons-update"></span> <?php esc_html_e('Start Manual Sync', 'dashd-analytics-pro'); ?>
                 </button>
             </form>
@@ -25,14 +25,14 @@ function dashd_render_admin_sync_controls() {
         <div class="dashd-card dashd-action-card">
             <h3 style="margin-top:0;"><?php esc_html_e('Auto-Synchronization (WP Cron)', 'dashd-analytics-pro'); ?></h3>
             <p style="color:#646970; margin-bottom: 20px;"><?php esc_html_e('Set up automatic daily data fetching from your sources (max once a day).', 'dashd-analytics-pro'); ?></p>
-            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-action-card-form" style="display:flex; gap:10px; align-items:center;">
+            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-action-card-form dashd-toolbar-form">
                 <input type="hidden" name="action" value="dashd_save_auto_sync">
                 <?php wp_nonce_field('dashd_save_auto_sync', 'dashd_save_auto_sync_nonce'); ?>
                 <select name="auto_sync_status" style="max-width: 200px;">
                     <option value="disabled" <?php selected(get_option('dashd_auto_sync'), 'disabled'); ?>><?php esc_html_e('Disabled', 'dashd-analytics-pro'); ?></option>
                     <option value="enabled" <?php selected(get_option('dashd_auto_sync'), 'enabled'); ?>><?php esc_html_e('Enabled (Daily)', 'dashd-analytics-pro'); ?></option>
                 </select>
-                <button type="submit" class="button button-secondary"><?php esc_html_e('Save Schedule', 'dashd-analytics-pro'); ?></button>
+                <button type="submit" class="button button-secondary dashd-admin-action-button"><?php esc_html_e('Save Schedule', 'dashd-analytics-pro'); ?></button>
             </form>
         </div>
 
@@ -42,7 +42,7 @@ function dashd_render_admin_sync_controls() {
             <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" class="dashd-action-card-form" onsubmit="return confirm('<?php esc_attr_e('Are you absolutely sure you want to wipe all plugin data (records, snapshots, leads, logs)? This cannot be undone!', 'dashd-analytics-pro'); ?>');">
                 <input type="hidden" name="action" value="dashd_wipe_all_data">
                 <?php wp_nonce_field('dashd_wipe_all_data', 'dashd_wipe_all_data_nonce'); ?>
-                <button type="submit" class="button" style="color:#d63638; border-color:#d63638; display:flex; align-items:center; gap:5px;">
+                <button type="submit" class="button dashd-admin-danger-button">
                     <span class="dashicons dashicons-trash"></span> <?php esc_html_e('Wipe All Plugin Data', 'dashd-analytics-pro'); ?>
                 </button>
             </form>
