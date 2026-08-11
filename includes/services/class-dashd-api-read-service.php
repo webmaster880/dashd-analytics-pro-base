@@ -45,6 +45,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'year' => $fy,
                     'q' => $fq,
                     'indicators' => $indicator_specs,
+                    'period_model' => 'annual_q4_or_quarters_v1',
                 ])
                 : '';
             if ($cache_key !== '') {
@@ -97,13 +98,26 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $periods_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC LIMIT %d";
                 $periods_args[] = $max_all_periods;
                 $periods = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
-                if (is_array($periods) && count($periods) > 1) {
-                    $periods = array_reverse($periods);
-                }
-                $period_labels = array_map(static fn($p) => "{$p->data_quarter} {$p->data_year}", $periods);
+                $display_periods = self::build_display_periods($periods, 'asc');
+                $period_labels = array_map(static fn($p) => (string) $p['label'], $display_periods);
                 $period_index_map = [];
-                foreach ($period_labels as $idx => $period_label) {
-                    $period_index_map[$period_label] = $idx;
+                $periods_meta = [];
+                foreach ($display_periods as $idx => $period) {
+                    $source_keys = isset($period['source_keys']) && is_array($period['source_keys'])
+                        ? $period['source_keys']
+                        : [(string) ($period['source_key'] ?? '')];
+                    foreach ($source_keys as $source_key) {
+                        $source_key = (string) $source_key;
+                        if ($source_key !== '') {
+                            $period_index_map[$source_key] = $idx;
+                        }
+                    }
+                    $periods_meta[] = [
+                        'label' => (string) $period['label'],
+                        'type' => (string) $period['type'],
+                        'year' => (int) $period['year'],
+                        'quarter' => (string) $period['quarter'],
+                    ];
                 }
 
                 $all_sql = "
@@ -127,7 +141,13 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $all_args[] = $max_all_rows;
                 $results = $wpdb->get_results($wpdb->prepare($all_sql, ...$all_args));
 
-                $data = ['periods' => $period_labels, 'countries' => [], 'indicators' => [], 'last_sync' => $formatted_sync];
+                $data = [
+                    'periods' => $period_labels,
+                    'periods_meta' => $periods_meta,
+                    'countries' => [],
+                    'indicators' => [],
+                    'last_sync' => $formatted_sync,
+                ];
                 $country_set = [];
                 $truncated = [
                     'countries' => false,
@@ -138,7 +158,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     $cty_label = function_exists('dashd_api_safe_label') ? dashd_api_safe_label($row->cty ?? '') : sanitize_text_field((string) ($row->cty ?? ''));
                     if ($ind_label === '' || $cty_label === '') continue;
 
-                    $p_key = "{$row->data_quarter} {$row->data_year}";
+                    $p_key = self::period_source_key((int) $row->data_year, (string) $row->data_quarter);
                     if (!isset($period_index_map[$p_key])) continue;
                     $p_idx = (int) $period_index_map[$p_key];
 
@@ -161,7 +181,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     if (!isset($data['indicators'][$ind_label][$cty_label])) {
                         $data['indicators'][$ind_label][$cty_label] = array_fill(0, count($period_labels), 0);
                     }
-                    $data['indicators'][$ind_label][$cty_label][$p_idx] = (float) $row->val;
+                    $data['indicators'][$ind_label][$cty_label][$p_idx] += (float) $row->val;
                 }
                 if ($truncated['countries'] || $truncated['indicators']) {
                     $data['truncated'] = $truncated;
@@ -202,13 +222,16 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_api_limit_int(apply_filters('dashd_api_period_max_indicators', 500, $key, $fy, $fq), 500, 1, 5000)
                 : 500;
 
+            $current_quarters = self::resolve_period_query_quarters($key, $indicator_specs, $fy, $fq);
+            $current_quarter_placeholders = implode(', ', array_fill(0, count($current_quarters), '%s'));
+
             $current_sql = "
-                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val
+                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, SUM(r.val) as val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
-                WHERE r.data_year=%d AND r.data_quarter=%s";
-            $current_args = [$fy, $fq];
+                WHERE r.data_year=%d AND r.data_quarter IN ({$current_quarter_placeholders})";
+            $current_args = array_merge([$fy], $current_quarters);
             if (!empty($indicator_specs)) {
                 [$indicator_sql, $indicator_args] = self::build_indicator_filter_sql($indicator_specs, 'r', $key);
                 if ($indicator_sql !== '') {
@@ -219,18 +242,20 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $current_sql .= " AND r.source_key=%s";
                 $current_args[] = $key;
             }
-            $current_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            $current_sql .= " GROUP BY ind, cty, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
             $current_args[] = $max_period_rows;
             $current = $wpdb->get_results($wpdb->prepare($current_sql, ...$current_args));
 
             $prev_year = $fy - 1;
+            $previous_quarters = self::resolve_period_query_quarters($key, $indicator_specs, $prev_year, $fq);
+            $previous_quarter_placeholders = implode(', ', array_fill(0, count($previous_quarters), '%s'));
             $previous_sql = "
-                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val
+                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, SUM(r.val) as val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
-                WHERE r.data_year=%d AND r.data_quarter=%s";
-            $previous_args = [$prev_year, $fq];
+                WHERE r.data_year=%d AND r.data_quarter IN ({$previous_quarter_placeholders})";
+            $previous_args = array_merge([$prev_year], $previous_quarters);
             if (!empty($indicator_specs)) {
                 [$indicator_sql, $indicator_args] = self::build_indicator_filter_sql($indicator_specs, 'r', $key);
                 if ($indicator_sql !== '') {
@@ -241,7 +266,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $previous_sql .= " AND r.source_key=%s";
                 $previous_args[] = $key;
             }
-            $previous_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            $previous_sql .= " GROUP BY ind, cty, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
             $previous_args[] = $max_period_rows;
             $previous = $wpdb->get_results($wpdb->prepare($previous_sql, ...$previous_args));
 
@@ -329,7 +354,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             $cache_key = function_exists('dashd_api_public_cache_key')
-                ? dashd_api_public_cache_key('periods_split', ['key' => $key, 'indicators' => $indicator_specs])
+                ? dashd_api_public_cache_key('periods_split', [
+                    'key' => $key,
+                    'indicators' => $indicator_specs,
+                    'period_model' => 'annual_q4_or_quarters_v1',
+                ])
                 : '';
             if ($cache_key !== '') {
                 $cached_data = get_transient($cache_key);
@@ -377,13 +406,12 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $periods_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC";
             $period_rows = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
 
-            $valid_quarters = ['Q4', 'Q3', 'Q2', 'Q1'];
             $year_quarters = [];
             $latest = ['year' => null, 'quarter' => null];
-            foreach ($period_rows as $idx => $row) {
+            foreach ($period_rows as $row) {
                 $year = (string) ($row->data_year ?? '');
-                $quarter = strtoupper((string) ($row->data_quarter ?? ''));
-                if ($year === '' || !in_array($quarter, $valid_quarters, true)) {
+                $quarter = self::normalize_quarter((string) ($row->data_quarter ?? ''));
+                if ($year === '' || $quarter === '') {
                     continue;
                 }
                 if (!isset($year_quarters[$year])) {
@@ -392,17 +420,25 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 if (!in_array($quarter, $year_quarters[$year], true)) {
                     $year_quarters[$year][] = $quarter;
                 }
-                if ($idx === 0) {
-                    $latest = ['year' => $year, 'quarter' => $quarter];
-                }
             }
 
             foreach ($year_quarters as $year => $q_list) {
+                if (in_array('Q4', $q_list, true)) {
+                    $year_quarters[$year] = ['Q4'];
+                    continue;
+                }
                 usort($q_list, static function ($a, $b) {
-                    $rank = ['Q4' => 4, 'Q3' => 3, 'Q2' => 2, 'Q1' => 1];
-                    return ($rank[$b] ?? 0) <=> ($rank[$a] ?? 0);
+                    return self::quarter_rank((string) $b) <=> self::quarter_rank((string) $a);
                 });
                 $year_quarters[$year] = array_values($q_list);
+            }
+
+            $display_periods_desc = self::build_display_periods($period_rows, 'desc');
+            if (!empty($display_periods_desc[0])) {
+                $latest = [
+                    'year' => (string) $display_periods_desc[0]['year'],
+                    'quarter' => (string) $display_periods_desc[0]['quarter'],
+                ];
             }
 
             $data = [
@@ -410,6 +446,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 'quarters' => $quarters,
                 'year_quarters' => $year_quarters,
                 'latest' => $latest,
+                'period_model' => 'annual_q4_or_quarters',
             ];
 
             self::cache_if_needed($cache_key, $data, 'periods_split');
@@ -546,6 +583,160 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             return [implode(' OR ', $clauses), $args];
+        }
+
+        /**
+         * Convert raw quarter rows into chart/display periods.
+         * A year with Q4 is considered completed and all available quarters are summed into one annual point.
+         *
+         * @param array<int,object> $period_rows
+         * @param string            $direction
+         * @return array<int,array<string,mixed>>
+         */
+        private static function build_display_periods($period_rows, $direction = 'asc') {
+            $by_year = [];
+            foreach ((array) $period_rows as $row) {
+                $year = (int) ($row->data_year ?? 0);
+                $quarter = self::normalize_quarter((string) ($row->data_quarter ?? ''));
+                if ($year <= 0 || $quarter === '') {
+                    continue;
+                }
+                if (!isset($by_year[$year])) {
+                    $by_year[$year] = [];
+                }
+                $by_year[$year][$quarter] = true;
+            }
+
+            $years = array_keys($by_year);
+            sort($years, SORT_NUMERIC);
+            if ($direction === 'desc') {
+                $years = array_reverse($years);
+            }
+
+            $display_periods = [];
+            foreach ($years as $year) {
+                $quarters = array_keys($by_year[$year]);
+                usort($quarters, static function ($a, $b) use ($direction) {
+                    $rank_a = self::quarter_rank((string) $a);
+                    $rank_b = self::quarter_rank((string) $b);
+                    return $direction === 'desc' ? ($rank_b <=> $rank_a) : ($rank_a <=> $rank_b);
+                });
+
+                if (isset($by_year[$year]['Q4'])) {
+                    $source_keys = [];
+                    foreach ($quarters as $quarter) {
+                        $source_keys[] = self::period_source_key((int) $year, (string) $quarter);
+                    }
+                    $display_periods[] = [
+                        'label' => (string) $year,
+                        'type' => 'annual',
+                        'year' => (int) $year,
+                        'quarter' => 'Q4',
+                        'source_key' => self::period_source_key((int) $year, 'Q4'),
+                        'source_keys' => $source_keys,
+                    ];
+                    continue;
+                }
+
+                foreach ($quarters as $quarter) {
+                    $display_periods[] = [
+                        'label' => $quarter . ' ' . $year,
+                        'type' => 'quarter',
+                        'year' => (int) $year,
+                        'quarter' => (string) $quarter,
+                        'source_key' => self::period_source_key((int) $year, (string) $quarter),
+                        'source_keys' => [self::period_source_key((int) $year, (string) $quarter)],
+                    ];
+                }
+            }
+
+            return $display_periods;
+        }
+
+        /**
+         * Resolve raw quarters that should be aggregated for a requested display period.
+         *
+         * @param string                         $key
+         * @param array<int,array{source:string,id:int}> $indicator_specs
+         * @param int                            $year
+         * @param string                         $quarter
+         * @return array<int,string>
+         */
+        private static function resolve_period_query_quarters($key, array $indicator_specs, $year, $quarter) {
+            global $wpdb;
+
+            $quarter = self::normalize_quarter((string) $quarter);
+            if ($quarter === '') {
+                $quarter = 'Q4';
+            }
+            $year = (int) $year;
+            if ($year <= 0 || $quarter !== 'Q4') {
+                return [$quarter];
+            }
+
+            $sql = "SELECT DISTINCT r.data_quarter
+                FROM {$wpdb->prefix}dashd_data_records r
+                WHERE r.data_year = %d";
+            $args = [$year];
+
+            if (!empty($indicator_specs)) {
+                [$indicator_sql, $indicator_args] = self::build_indicator_filter_sql($indicator_specs, 'r', $key);
+                if ($indicator_sql !== '') {
+                    $sql .= " AND ({$indicator_sql})";
+                    $args = array_merge($args, $indicator_args);
+                }
+            } else {
+                $sql .= " AND r.source_key = %s";
+                $args[] = $key;
+            }
+
+            $rows = $wpdb->get_col($wpdb->prepare($sql, ...$args));
+            $quarters = [];
+            foreach ((array) $rows as $row_quarter) {
+                $normalized = self::normalize_quarter((string) $row_quarter);
+                if ($normalized !== '' && !in_array($normalized, $quarters, true)) {
+                    $quarters[] = $normalized;
+                }
+            }
+
+            if (!in_array('Q4', $quarters, true)) {
+                return [$quarter];
+            }
+
+            usort($quarters, static function ($a, $b) {
+                return self::quarter_rank((string) $a) <=> self::quarter_rank((string) $b);
+            });
+
+            return !empty($quarters) ? array_values($quarters) : [$quarter];
+        }
+
+        /**
+         * @param int    $year
+         * @param string $quarter
+         * @return string
+         */
+        private static function period_source_key($year, $quarter) {
+            $quarter = self::normalize_quarter((string) $quarter);
+            return $quarter !== '' ? $quarter . ' ' . (int) $year : '';
+        }
+
+        /**
+         * @param string $quarter
+         * @return string
+         */
+        private static function normalize_quarter($quarter) {
+            $quarter = strtoupper(trim((string) $quarter));
+            return in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true) ? $quarter : '';
+        }
+
+        /**
+         * @param string $quarter
+         * @return int
+         */
+        private static function quarter_rank($quarter) {
+            $rank = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4];
+            $quarter = self::normalize_quarter((string) $quarter);
+            return $rank[$quarter] ?? 0;
         }
     }
 }

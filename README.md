@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.8.9`
+- Stable version: `11.9.0`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -68,6 +68,16 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
   }
 ]
 ```
+
+### Raw Data Period Model
+
+Графики интерпретируют raw data по гибридной annual/quarterly модели:
+
+- Если для года есть `Q4`, год считается завершенным.
+- Для завершенного года график показывает одну годовую точку (`2025`, `2024` и т.д.).
+- Если в завершенном году есть несколько квартальных строк, годовое значение считается как сумма доступных кварталов этого года.
+- Если для года нет `Q4`, год считается незавершенным и график показывает каждый доступный квартал отдельно (`Q1 2026`, `Q2 2026` и т.д.).
+- Для годов, где хранится только `Q4`, значение `Q4` считается итоговым годовым значением.
 
 ### Calculated Indicator Formula Rules
 
@@ -320,7 +330,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.8.9`
+Latest release: `11.9.0`
 ---
 
 ## Notes

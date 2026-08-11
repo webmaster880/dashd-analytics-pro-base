@@ -1095,44 +1095,37 @@ function dashd_render_front_widget($atts) {
             const periods = Array.isArray(trendData.periods) ? trendData.periods : [];
             if (!countries.length || !periods.length) return null;
 
-            const quarterRank = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 };
-            const latestIndexByYear = new Map();
-            periods.forEach((periodLabel, idx) => {
-                const m = String(periodLabel || '').trim().match(/^(Q[1-4])\s+(\d{4})$/i);
-                if (!m) return;
-                const q = String(m[1] || '').toUpperCase();
-                const year = parseInt(String(m[2] || ''), 10);
-                if (!Number.isFinite(year) || year <= 0) return;
-
-                const rank = quarterRank[q] || 0;
-                const prev = latestIndexByYear.get(year);
-                if (!prev || rank > prev.rank || (rank === prev.rank && idx > prev.idx)) {
-                    latestIndexByYear.set(year, { idx, rank, quarter: q });
+            const periodsMeta = Array.isArray(trendData.periods_meta) ? trendData.periods_meta : [];
+            const periodKeys = periods.map((_, idx) => idx);
+            const periodLabels = periods.map((periodLabel, idx) => {
+                const meta = periodsMeta[idx] && typeof periodsMeta[idx] === 'object' ? periodsMeta[idx] : null;
+                if (meta && String(meta.type || '') === 'annual' && meta.year) {
+                    return String(meta.year);
                 }
-            });
+                if (meta && meta.year && meta.quarter) {
+                    return `${String(meta.quarter).toUpperCase()} ${String(meta.year)}`;
+                }
 
-            const yearsAsc = Array.from(latestIndexByYear.keys()).sort((a, b) => a - b);
-            if (!yearsAsc.length) return null;
+                const fallback = String(periodLabel || '').trim();
+                const match = fallback.match(/^(Q[1-4])\s+(\d{4})$/i);
+                if (match && String(match[1]).toUpperCase() === 'Q4') {
+                    return String(match[2]);
+                }
+                return fallback;
+            });
 
             const valuesByCountry = {};
             countries.forEach((country) => {
                 const series = (trendData.indicators[indicatorName] && trendData.indicators[indicatorName][country])
                     ? trendData.indicators[indicatorName][country]
                     : [];
-                valuesByCountry[country] = yearsAsc.map((year) => {
-                    const ref = latestIndexByYear.get(year);
-                    const raw = ref ? Number(series[ref.idx] ?? 0) : 0;
+                valuesByCountry[country] = periodKeys.map((periodIdx) => {
+                    const raw = Number(series[periodIdx] ?? 0);
                     return Number.isFinite(raw) ? raw : 0;
                 });
             });
 
-            const yearLabels = yearsAsc.map((year) => {
-                const ref = latestIndexByYear.get(year);
-                if (!ref) return String(year);
-                return ref.quarter === 'Q4' ? String(year) : `${year} (${ref.quarter})`;
-            });
-
-            return { indicatorName, yearsAsc, yearLabels, countries, valuesByCountry };
+            return { indicatorName, yearsAsc: periodKeys, yearLabels: periodLabels, countries, valuesByCountry };
         };
 
         const renderChart = () => {

@@ -23,6 +23,10 @@ All notable changes to this project are documented in this file.
   - colored action/danger buttons now force white dashicons for better contrast.
   - plugin action submit buttons now override third-party admin CSS margins (for example WPML button rules) to prevent vertical jumping.
   - header action buttons now explicitly preserve plugin hover/focus/active colors against third-party button rules.
+- Raw data period interpretation updated:
+  - years with `Q4` are treated as completed annual periods;
+  - completed years aggregate all available quarters into one annual chart value;
+  - years without `Q4` remain quarter-by-quarter in charts and trend tables.
 
 ### Added
 - New `Settings → Logs` management actions:
