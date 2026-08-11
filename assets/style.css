@@ -51,6 +51,13 @@
     box-shadow: none !important;
 }
 
+.wp-core-ui .dashd-admin-action-button[type="submit"],
+.wp-core-ui .dashd-admin-danger-button[type="submit"] {
+    margin: 0 !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+}
+
 .dashd-admin-action-button:hover,
 .dashd-admin-action-button:focus,
 .dashd-card .button-primary:hover,
