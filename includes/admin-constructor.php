@@ -109,6 +109,17 @@ function dashd_admin_constructor_page() {
                     <p style="font-size: 11px; color: #646970; margin-top: 5px;"><?php esc_html_e('When hidden, selected defaults still work in background.', 'dashd-analytics-pro'); ?></p>
                 </div>
 
+                <div class="uk-margin" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 8px;"><?php esc_html_e('Data Quality Warnings:', 'dashd-analytics-pro'); ?></label>
+                    <label style="display:block; margin-bottom:0;">
+                        <input type="checkbox" id="c_show_data_warnings" checked>
+                        <?php esc_html_e('Show warnings for negative or incorrect values', 'dashd-analytics-pro'); ?>
+                    </label>
+                    <p style="font-size: 11px; color: #646970; margin-top: 5px;">
+                        <?php esc_html_e('When disabled, the chart keeps rendering selected data without warning badges, warning borders, or fallback warning messages.', 'dashd-analytics-pro'); ?>
+                    </p>
+                </div>
+
                 <div class="uk-margin" style="margin-top:20px; padding:15px; background:#f6f7f7; border-radius:8px; border:1px solid #e5e5e5;">
                     <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Custom Color Palette:', 'dashd-analytics-pro'); ?></label>
                     
@@ -184,6 +195,7 @@ function dashd_admin_constructor_page() {
             const showViewToggle = document.getElementById('c_show_view_toggle').checked ? 'true' : 'false';
             const showScaleToggle = document.getElementById('c_show_scale_toggle').checked ? 'true' : 'false';
             const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
+            const showDataWarnings = document.getElementById('c_show_data_warnings').checked ? 'true' : 'false';
             const barOrientation = document.getElementById('c_bar_orientation').value;
             const barStacked = document.getElementById('c_bar_stacked').value;
             const countryOrder = String(document.getElementById('c_country_order').value || '').trim().replace(/"/g, "'");
@@ -193,6 +205,7 @@ function dashd_admin_constructor_page() {
             shortcode += ` show_view_toggle="${showViewToggle}"`;
             shortcode += ` show_scale_toggle="${showScaleToggle}"`;
             shortcode += ` show_periods="${showPeriods}"`;
+            shortcode += ` show_data_warnings="${showDataWarnings}"`;
             shortcode += ` bar_orientation="${barOrientation}"`;
             shortcode += ` bar_stacked="${barStacked}"`;
             if (countryOrder !== '') {
@@ -240,7 +253,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_bar_orientation', 'c_bar_stacked', 'c_country_order'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_bar_orientation', 'c_bar_stacked', 'c_country_order'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;

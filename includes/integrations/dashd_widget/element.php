@@ -123,6 +123,13 @@ return [
             'text' => 'Show Year / Quarter',
             'default' => true,
         ],
+        'show_data_warnings' => [
+            'label' => 'Show Data Quality Warnings',
+            'type' => 'checkbox',
+            'text' => 'Show negative / invalid data warnings',
+            'description' => 'Controls frontend warning badges, warning borders, tooltips, and fallback notices for problematic data.',
+            'default' => true,
+        ],
         'country_order' => [
             'label' => 'Country Display Order',
             'type' => 'text',
@@ -319,6 +326,7 @@ return [
                         'show_view_toggle',
                         'show_scale_toggle',
                         'show_periods',
+                        'show_data_warnings',
                         'country_order',
                         'colors',
                         [

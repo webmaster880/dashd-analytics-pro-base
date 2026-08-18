@@ -31,6 +31,7 @@ All notable changes to this project are documented in this file.
   - admin Raw Data rows with negative values are highlighted and marked as `Needs review`;
   - frontend chart points/bars and detailed table cells show warning markers/tooltips;
   - `Donut` view falls back to `Bar` and `Log` scale falls back to `Linear` when negative values are present.
+- Frontend data quality warnings can now be controlled per widget via `show_data_warnings`.
 
 ### Added
 - New `Settings → Logs` management actions:
@@ -55,6 +56,11 @@ All notable changes to this project are documented in this file.
   - new admin setting in `Analytics Pro → Settings` (`Update cache (hours)`);
   - saved option `dashd_github_updater_cache_ttl_hours`;
   - bounded cache window `12..24` hours with instant cache reset after save.
+- New data quality warning toggle added to shortcode generation and builder integrations:
+  - Admin Constructor;
+  - Elementor;
+  - Gutenberg;
+  - YOOtheme Pro.
 
 ### Fixed
 - Multi-indicator default period selection:

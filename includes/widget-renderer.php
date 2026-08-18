@@ -215,6 +215,7 @@ function dashd_render_front_widget($atts) {
         'show_view_toggle' => 'true',
         'show_scale_toggle' => 'true',
         'show_periods' => 'true',
+        'show_data_warnings' => 'true',
         'bar_orientation' => 'horizontal',
         'bar_stacked' => 'true',
         'country_order' => '',
@@ -295,6 +296,7 @@ function dashd_render_front_widget($atts) {
     $show_view_toggle = $bool_from_atts($a['show_view_toggle'] ?? 'true', true);
     $show_scale_toggle = $bool_from_atts($a['show_scale_toggle'] ?? 'true', true);
     $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
+    $show_data_warnings = $bool_from_atts($a['show_data_warnings'] ?? 'true', true);
     $bar_orientation = strtolower(trim((string) ($a['bar_orientation'] ?? 'horizontal')));
     if (!in_array($bar_orientation, ['horizontal', 'vertical'], true)) {
         $bar_orientation = 'horizontal';
@@ -369,6 +371,7 @@ function dashd_render_front_widget($atts) {
         'showViewToggle' => $show_view_toggle,
         'showScaleToggle' => $show_scale_toggle,
         'showPeriods' => $show_periods,
+        'showDataWarnings' => $show_data_warnings,
         'showBarControlsUI' => $show_bar_controls_ui,
         'barOrientation' => $bar_orientation,
         'barStacked' => $bar_stacked,
@@ -680,6 +683,7 @@ function dashd_render_front_widget($atts) {
             .replace(/'/g, '&#039;');
 
         const DATA_QUALITY_WARNING_COLOR = '#f97316';
+        const dataWarningsEnabled = config.showDataWarnings !== false;
         const hasNegativeValues = (data) => {
             if (!data || !Array.isArray(data.datasets)) return false;
             return data.datasets.some((dataset) => {
@@ -718,6 +722,9 @@ function dashd_render_front_widget($atts) {
         };
         const applyNegativeDatasetWarnings = (dataset, chartMode) => {
             const next = { ...dataset };
+            if (!dataWarningsEnabled) {
+                return next;
+            }
             const existingBorderColor = dataset.borderColor || dataset.backgroundColor || config.colors;
 
             if (chartMode === 'line') {
@@ -742,7 +749,7 @@ function dashd_render_front_widget($atts) {
         const updateDataQualityWarning = (hasWarnings, details = []) => {
             const warning = root.querySelector('.dashd-data-quality-warning');
             if (!warning) return;
-            if (!hasWarnings) {
+            if (!dataWarningsEnabled || !hasWarnings) {
                 warning.style.display = 'none';
                 warning.textContent = '';
                 return;
@@ -753,6 +760,9 @@ function dashd_render_front_widget($atts) {
             warning.style.display = 'block';
         };
         const renderValueWithWarning = (value) => {
+            if (!dataWarningsEnabled) {
+                return `<div style="font-size:13px;">${formatNum(value)}</div>`;
+            }
             const num = Number(value);
             const isNegative = Number.isFinite(num) && num < 0;
             const valueClass = isNegative ? 'dashd-cell-negative' : '';
@@ -1572,9 +1582,9 @@ function dashd_render_front_widget($atts) {
 	                                    label += formatNum(context.raw);
 	                                    return label;
 	                                },
-	                                afterLabel: function(context) {
-	                                    return isNegativeContextValue(context) ? i18n.negativeValueTooltip : '';
-	                                }
+                                afterLabel: function(context) {
+                                    return dataWarningsEnabled && isNegativeContextValue(context) ? i18n.negativeValueTooltip : '';
+                                }
 	                            }
 	                        }
 	                    },

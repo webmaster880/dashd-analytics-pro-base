@@ -99,6 +99,12 @@
                             checked: attributes.show_periods !== 'false',
                             onChange: (val) => setAttributes({ show_periods: val ? 'true' : 'false' })
                         }),
+                        el(ToggleControl, {
+                            label: 'Show Data Quality Warnings',
+                            checked: attributes.show_data_warnings !== 'false',
+                            help: 'Show warnings for negative or incorrect values.',
+                            onChange: (val) => setAttributes({ show_data_warnings: val ? 'true' : 'false' })
+                        }),
                         el(TextControl, {
                             label: 'Country Display Order',
                             value: attributes.country_order || '',

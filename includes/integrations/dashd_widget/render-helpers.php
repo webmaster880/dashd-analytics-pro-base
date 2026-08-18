@@ -232,6 +232,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $show_view_toggle = dashd_yootheme_normalize_toggle($props['show_view_toggle'] ?? true, true);
         $show_scale_toggle = dashd_yootheme_normalize_toggle($props['show_scale_toggle'] ?? true, true);
         $show_periods = dashd_yootheme_normalize_toggle($props['show_periods'] ?? true, true);
+        $show_data_warnings = dashd_yootheme_normalize_toggle($props['show_data_warnings'] ?? true, true);
         $bar_orientation = dashd_yootheme_normalize_bar_orientation($props['bar_orientation'] ?? 'horizontal');
         $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
 
@@ -252,6 +253,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'show_view_toggle' => $show_view_toggle,
             'show_scale_toggle' => $show_scale_toggle,
             'show_periods' => $show_periods,
+            'show_data_warnings' => $show_data_warnings,
             'bar_orientation' => $bar_orientation,
             'bar_stacked' => $bar_stacked,
             'country_order' => $country_order,
@@ -268,7 +270,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" bar_orientation="%s" bar_stacked="%s" country_order="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" bar_orientation="%s" bar_stacked="%s" country_order="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -277,6 +279,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['show_view_toggle'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_scale_toggle'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_periods'] ?? 'true'),
+            dashd_yootheme_escape_attr($normalized['show_data_warnings'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['bar_orientation'] ?? 'horizontal'),
             dashd_yootheme_escape_attr($normalized['bar_stacked'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['country_order'] ?? ''),

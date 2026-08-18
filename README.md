@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.2`
+- Stable version: `11.9.3`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -90,6 +90,12 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 - если выбран `Donut`, но в наборе есть отрицательные значения, график автоматически показывается как `Bar`;
 - если выбран `Log`, но в наборе есть отрицательные значения, шкала автоматически показывается как `Linear`.
 
+Frontend-предупреждения можно отключить для конкретного виджета через shortcode-атрибут
+`show_data_warnings="false"` или соответствующий переключатель в Admin Constructor,
+Elementor, Gutenberg и YOOtheme Pro. При отключении скрываются warning-бейджи,
+warning-обводки, tooltip-предупреждения и fallback-уведомления. Защитный fallback
+для режимов `Donut`/`Log` при отрицательных значениях остается активным.
+
 ### Calculated Indicator Formula Rules
 
 Формулы для расчетных индикаторов задаются в формате:
@@ -149,6 +155,13 @@ Parameters:
 - `scale` — `linear | logarithmic`.
 - `colors` — HEX-палитра через запятую.
 - `gated` — `true | false` (email-gate для CSV/PDF).
+- `show_view_toggle` — `true | false`, показать/скрыть переключатель `Bar / Line / Donut`.
+- `show_scale_toggle` — `true | false`, показать/скрыть переключатель `Lin / Log`.
+- `show_periods` — `true | false`, показать/скрыть выбор года/квартала.
+- `show_data_warnings` — `true | false`, показать/скрыть frontend-предупреждения об отрицательных/некорректных значениях.
+- `bar_orientation` — `horizontal | vertical`.
+- `bar_stacked` — `true | false`, stacked или grouped bar.
+- `country_order` — ручная сортировка стран через запятую.
 - `weight` — толщина линий (default: `3`).
 - `height` — высота графика (default: `420px`).
 
@@ -341,7 +354,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.2`
+Latest release: `11.9.3`
 ---
 
 ## Notes
