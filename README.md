@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.11`
+- Stable version: `11.9.12`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -197,6 +197,7 @@ PDF рендерится на белом фоне намеренно для чи
 При экспорте PDF легенда графика дорисовывается в итоговый canvas после `html2canvas`.
 Это не зависит от интерактивной или canvas-легенды Chart.js, поэтому сохраняет цветные плашки
 даже если обычная легенда скрыта на странице или не попадает в DOM-снимок.
+Для отчетов с таблицей легенда вставляется перед таблицей, чтобы не перекрывать подписи осей графика.
 
 ---
 
@@ -367,7 +368,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.11`
+Latest release: `11.9.12`
 ---
 
 ## Notes

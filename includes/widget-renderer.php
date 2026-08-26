@@ -2311,11 +2311,10 @@ function dashd_render_front_widget($atts) {
 
                     const rootRect = root.getBoundingClientRect();
                     const chartRect = chartBox.getBoundingClientRect();
-                    const cssHeight = Math.max(root.scrollHeight, rootRect.height, 1);
+                    const tableRect = tableWrapper ? tableWrapper.getBoundingClientRect() : null;
                     const cssWidth = Math.max(root.scrollWidth, rootRect.width, 1);
                     const scaleX = sourceCanvas.width / cssWidth;
-                    const scaleY = sourceCanvas.height / cssHeight;
-                    const scale = Math.max(1, Math.min(scaleX, scaleY));
+                    const scale = Math.max(1, scaleX);
                     const fontSize = 12;
                     const fontFamily = 'Arial, sans-serif';
                     const pillHeight = 30 * scale;
@@ -2350,14 +2349,14 @@ function dashd_render_front_widget($atts) {
                     const legendHeight = Math.ceil(Math.max(pillHeight, rows.length * pillHeight + Math.max(0, rows.length - 1) * rowGap));
                     const legendMarginTop = 14 * scale;
                     const legendMarginBottom = 18 * scale;
+                    const chartBottomY = Math.round((chartRect.bottom - rootRect.top) * scale);
+                    const tableTopY = tableRect ? Math.round((tableRect.top - rootRect.top) * scale) : 0;
+                    const fallbackY = chartBottomY + Math.round(24 * scale);
                     const insertY = Math.max(
                         0,
-                        Math.min(
-                            sourceCanvas.height,
-                            Math.round((chartRect.bottom - rootRect.top + root.scrollTop) * scaleY + legendMarginTop)
-                        )
+                        Math.min(sourceCanvas.height, tableTopY > chartBottomY ? tableTopY : fallbackY)
                     );
-                    const extraHeight = Math.ceil(legendHeight + legendMarginBottom);
+                    const extraHeight = Math.ceil(legendMarginTop + legendHeight + legendMarginBottom);
 
                     finalCanvas.width = sourceCanvas.width;
                     finalCanvas.height = sourceCanvas.height + extraHeight;
@@ -2397,7 +2396,7 @@ function dashd_render_front_widget($atts) {
                     rows.forEach((row, rowIndex) => {
                         const totalWidth = row.reduce((sum, item) => sum + item.pillWidth, 0) + Math.max(0, row.length - 1) * gap;
                         let x = Math.max(0, (sourceCanvas.width - totalWidth) / 2);
-                        const y = insertY + rowIndex * rowHeight;
+                        const y = insertY + legendMarginTop + rowIndex * rowHeight;
 
                         row.forEach((entry) => {
                             drawRoundRect(ctx2d, x, y, entry.pillWidth, pillHeight, pillHeight / 2);

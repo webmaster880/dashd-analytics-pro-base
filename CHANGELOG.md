@@ -76,6 +76,8 @@ All notable changes to this project are documented in this file.
   - a temporary PDF-only legend is injected from visible chart datasets when the interactive or canvas legend is hidden;
   - the PDF-only legend now uses an isolated class and inline layout styles to avoid being hidden by frontend legend CSS;
   - PDF-only legend is now drawn into the final captured canvas after `html2canvas`, bypassing DOM capture issues;
+  - PDF legend placement now uses the capture scale from the chart width so it is inserted below the chart instead of overlapping the X axis;
+  - PDF legend insertion now prefers the table boundary as a safe anchor to avoid cutting chart axis labels;
   - Chart.js canvas legend is temporarily disabled during PDF capture to avoid duplicate legends;
   - export uses safer image capture options to avoid cross-origin flag images breaking PDF generation.
 - Multi-indicator default period selection:
