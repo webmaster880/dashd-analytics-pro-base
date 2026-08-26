@@ -2306,24 +2306,105 @@ function dashd_render_front_widget($atts) {
                     const legend = document.createElement('div');
                     legend.className = 'dashd-temp-pdf-legend';
                     legend.setAttribute('data-html2canvas-ignore', 'false');
-                    legend.style.display = 'flex';
-                    legend.style.justifyContent = 'center';
-                    legend.style.alignItems = 'center';
-                    legend.style.flexWrap = 'wrap';
-                    legend.style.gap = '8px 10px';
+                    legend.style.display = 'block';
                     legend.style.margin = '14px 0 18px';
                     legend.style.minHeight = '30px';
                     legend.style.width = '100%';
                     legend.style.position = 'relative';
                     legend.style.zIndex = '1';
+                    legend.style.textAlign = 'center';
 
-                    legend.innerHTML = entries.map((entry) => {
-                        const marker = entry.flagUrl
-                            ? `<span class="dashd-legend-flag" style="display:inline-flex;width:20px;height:20px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.85);background:rgba(255,255,255,0.25);flex:0 0 auto;"><img src="${escapeHtml(entry.flagUrl)}" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;display:block;"></span>`
-                            : `<span class="dashd-legend-color" style="display:inline-flex;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.88);box-shadow:inset 0 0 0 2px rgba(255,255,255,0.35);flex:0 0 auto;"></span>`;
+                    const widthSource = chartBox || root;
+                    const width = Math.max(320, Math.round(widthSource.getBoundingClientRect().width || widthSource.clientWidth || 800));
+                    const scale = Math.max(2, Math.min(3, Math.ceil(window.devicePixelRatio || 1)));
+                    const fontSize = 12;
+                    const fontFamily = 'Arial, sans-serif';
+                    const pillHeight = 30;
+                    const markerSize = 18;
+                    const gap = 10;
+                    const rowGap = 8;
+                    const rowHeight = pillHeight + rowGap;
+                    const horizontalPadding = 12;
+                    const innerGap = 7;
+                    const maxRowWidth = width - 20;
 
-                        return `<span class="dashd-html-legend-item" style="display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 6px;border:0;border-radius:999px;background:${escapeHtml(entry.color)};background-color:${escapeHtml(entry.color)};color:${escapeHtml(entry.textColor)};font-size:12px;font-weight:600;line-height:1.2;box-shadow:0 4px 10px rgba(15,23,42,0.12);-webkit-print-color-adjust:exact;print-color-adjust:exact;">${marker}<span style="color:inherit;">${escapeHtml(entry.label)}</span></span>`;
-                    }).join('');
+                    const measureCanvas = document.createElement('canvas');
+                    const measureCtx = measureCanvas.getContext('2d');
+                    if (!measureCtx) return null;
+                    measureCtx.font = `600 ${fontSize}px ${fontFamily}`;
+
+                    const rows = [[]];
+                    let rowWidth = 0;
+                    entries.forEach((entry) => {
+                        const textWidth = Math.ceil(measureCtx.measureText(entry.label).width);
+                        const pillWidth = Math.max(70, horizontalPadding + markerSize + innerGap + textWidth + horizontalPadding);
+                        const nextWidth = rowWidth === 0 ? pillWidth : rowWidth + gap + pillWidth;
+                        if (nextWidth > maxRowWidth && rows[rows.length - 1].length) {
+                            rows.push([]);
+                            rowWidth = 0;
+                        }
+
+                        rows[rows.length - 1].push({ ...entry, pillWidth });
+                        rowWidth = rowWidth === 0 ? pillWidth : rowWidth + gap + pillWidth;
+                    });
+
+                    const height = Math.max(pillHeight, rows.length * pillHeight + Math.max(0, rows.length - 1) * rowGap);
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'dashd-temp-pdf-legend-canvas';
+                    canvas.width = width * scale;
+                    canvas.height = height * scale;
+                    canvas.style.display = 'block';
+                    canvas.style.width = `${width}px`;
+                    canvas.style.height = `${height}px`;
+                    canvas.style.maxWidth = '100%';
+                    canvas.style.margin = '0 auto';
+
+                    const ctx2d = canvas.getContext('2d');
+                    if (!ctx2d) return null;
+                    ctx2d.scale(scale, scale);
+                    ctx2d.clearRect(0, 0, width, height);
+                    ctx2d.font = `600 ${fontSize}px ${fontFamily}`;
+                    ctx2d.textBaseline = 'middle';
+
+                    const drawRoundRect = (ctx, x, y, w, h, r) => {
+                        const radius = Math.min(r, w / 2, h / 2);
+                        ctx.beginPath();
+                        ctx.moveTo(x + radius, y);
+                        ctx.lineTo(x + w - radius, y);
+                        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+                        ctx.lineTo(x + w, y + h - radius);
+                        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+                        ctx.lineTo(x + radius, y + h);
+                        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+                        ctx.lineTo(x, y + radius);
+                        ctx.quadraticCurveTo(x, y, x + radius, y);
+                        ctx.closePath();
+                    };
+
+                    rows.forEach((row, rowIndex) => {
+                        const totalWidth = row.reduce((sum, item) => sum + item.pillWidth, 0) + Math.max(0, row.length - 1) * gap;
+                        let x = Math.max(0, (width - totalWidth) / 2);
+                        const y = rowIndex * rowHeight;
+
+                        row.forEach((entry) => {
+                            drawRoundRect(ctx2d, x, y, entry.pillWidth, pillHeight, pillHeight / 2);
+                            ctx2d.fillStyle = entry.color;
+                            ctx2d.fill();
+
+                            const markerX = x + horizontalPadding + markerSize / 2;
+                            const markerY = y + pillHeight / 2;
+                            ctx2d.beginPath();
+                            ctx2d.arc(markerX, markerY, markerSize / 2, 0, Math.PI * 2);
+                            ctx2d.fillStyle = 'rgba(255,255,255,0.88)';
+                            ctx2d.fill();
+
+                            ctx2d.fillStyle = entry.textColor;
+                            ctx2d.fillText(entry.label, x + horizontalPadding + markerSize + innerGap, markerY);
+                            x += entry.pillWidth + gap;
+                        });
+                    });
+
+                    legend.appendChild(canvas);
 
                     return legend;
                 };
