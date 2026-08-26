@@ -21,6 +21,8 @@ add_action('init', function() {
             'show_periods' => ['type' => 'string', 'default' => 'true'],
             'show_data_warnings' => ['type' => 'string', 'default' => 'true'],
             'country_order' => ['type' => 'string', 'default' => ''],
+            'period_start' => ['type' => 'string', 'default' => ''],
+            'period_end' => ['type' => 'string', 'default' => ''],
             'colors'   => ['type' => 'string', 'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7']
         ]
     ]);
@@ -40,6 +42,9 @@ add_action('enqueue_block_editor_assets', function() {
     $indicator_options = function_exists('dashd_integration_get_indicator_options')
         ? dashd_integration_get_indicator_options()
         : [];
+    $period_options = function_exists('dashd_integration_get_period_options')
+        ? dashd_integration_get_period_options()
+        : [];
     $indicators = [];
     foreach ($indicator_options as $token => $label) {
         $indicators[] = [
@@ -47,9 +52,17 @@ add_action('enqueue_block_editor_assets', function() {
             'label' => (string) $label,
         ];
     }
+    $periods = [];
+    foreach ($period_options as $value => $label) {
+        $periods[] = [
+            'value' => (string) $value,
+            'label' => (string) $label,
+        ];
+    }
 
     wp_localize_script('dashd-gutenberg-block', 'dashdBlocksInfo', [
         'sources' => $sources,
         'indicators' => $indicators,
+        'periods' => $periods,
     ]);
 });

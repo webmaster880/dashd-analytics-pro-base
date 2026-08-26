@@ -857,6 +857,30 @@ function dashd_render_front_widget($atts) {
             return String(bg || dataset?.borderColor || '#94a3b8');
         };
 
+        const normalizeLegendColor = (color) => {
+            const value = String(color || '').trim();
+            if (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)) {
+                return value;
+            }
+            if (/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i.test(value)) {
+                return value;
+            }
+            return '#94a3b8';
+        };
+
+        const getLegendTextColor = (color) => {
+            const value = String(color || '').trim();
+            const hex = value.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
+            if (!hex) return '#ffffff';
+
+            const raw = hex[1];
+            const r = parseInt(raw.slice(0, 2), 16);
+            const g = parseInt(raw.slice(2, 4), 16);
+            const b = parseInt(raw.slice(4, 6), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.64 ? '#1f2937' : '#ffffff';
+        };
+
         const shouldUseFlagLegend = (chartData) => {
             if (!chartData || !Array.isArray(chartData.datasets)) return false;
             return chartData.datasets.some((dataset) => getCountryFlagUrl(dataset?.label) !== '');
@@ -875,12 +899,13 @@ function dashd_render_front_widget($atts) {
             legendBox.innerHTML = chartData.datasets.map((dataset, datasetIndex) => {
                 const label = String(dataset?.label ?? '');
                 const flagUrl = getCountryFlagUrl(label);
-                const color = getLegendItemColor(dataset);
+                const color = normalizeLegendColor(getLegendItemColor(dataset));
+                const textColor = getLegendTextColor(color);
                 const hiddenClass = chart.isDatasetVisible(datasetIndex) ? '' : ' is-hidden';
                 const marker = flagUrl
-                    ? `<span class="dashd-legend-flag" style="--dashd-legend-color:${escapeHtml(color)};"><img src="${escapeHtml(flagUrl)}" alt=""></span>`
-                    : `<span class="dashd-legend-color" style="background:${escapeHtml(color)};"></span>`;
-                return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}">${marker}<span>${escapeHtml(label)}</span></button>`;
+                    ? `<span class="dashd-legend-flag"><img src="${escapeHtml(flagUrl)}" alt=""></span>`
+                    : `<span class="dashd-legend-color"></span>`;
+                return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" style="--dashd-legend-bg:${escapeHtml(color)};--dashd-legend-text:${escapeHtml(textColor)};">${marker}<span>${escapeHtml(label)}</span></button>`;
             }).join('');
 
             legendBox.querySelectorAll('.dashd-html-legend-item').forEach((button) => {

@@ -193,6 +193,28 @@ if (!function_exists('dashd_yootheme_normalize_country_order')) {
     }
 }
 
+if (!function_exists('dashd_yootheme_normalize_period_bound')) {
+    /**
+     * Normalize period bound to YYYY-QN or return an empty string.
+     */
+    function dashd_yootheme_normalize_period_bound($value) {
+        $value = strtoupper(trim((string) (is_scalar($value) ? $value : '')));
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{4})[-_\s]?(Q[1-4])$/', $value, $matches) === 1) {
+            return sprintf('%d-%s', (int) $matches[1], (string) $matches[2]);
+        }
+
+        if (preg_match('/^(Q[1-4])[-_\s]?(\d{4})$/', $value, $matches) === 1) {
+            return sprintf('%d-%s', (int) $matches[2], (string) $matches[1]);
+        }
+
+        return '';
+    }
+}
+
 if (!function_exists('dashd_yootheme_normalize_widget_props')) {
     /**
      * Return strictly validated widget props used for shortcode rendering.
@@ -235,6 +257,8 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $show_data_warnings = dashd_yootheme_normalize_toggle($props['show_data_warnings'] ?? true, true);
         $bar_orientation = dashd_yootheme_normalize_bar_orientation($props['bar_orientation'] ?? 'horizontal');
         $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
+        $period_start = dashd_yootheme_normalize_period_bound($props['period_start'] ?? '');
+        $period_end = dashd_yootheme_normalize_period_bound($props['period_end'] ?? '');
 
         $preset = dashd_yootheme_normalize_palette($props['colors'] ?? '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7');
         $custom = dashd_yootheme_extract_custom_palette($props);
@@ -256,6 +280,8 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'show_data_warnings' => $show_data_warnings,
             'bar_orientation' => $bar_orientation,
             'bar_stacked' => $bar_stacked,
+            'period_start' => $period_start,
+            'period_end' => $period_end,
             'country_order' => $country_order,
             'colors' => $colors,
         ];
@@ -270,7 +296,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" bar_orientation="%s" bar_stacked="%s" country_order="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -282,6 +308,8 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['show_data_warnings'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['bar_orientation'] ?? 'horizontal'),
             dashd_yootheme_escape_attr($normalized['bar_stacked'] ?? 'true'),
+            dashd_yootheme_escape_attr($normalized['period_start'] ?? ''),
+            dashd_yootheme_escape_attr($normalized['period_end'] ?? ''),
             dashd_yootheme_escape_attr($normalized['country_order'] ?? ''),
             dashd_yootheme_escape_attr($normalized['colors'] ?? '')
         );

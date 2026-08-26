@@ -20,6 +20,8 @@
                 value: s.source_key
             }));
             const indicatorOptions = Array.isArray(dashdBlocksInfo.indicators) ? dashdBlocksInfo.indicators : [];
+            const periodOptions = Array.isArray(dashdBlocksInfo.periods) ? dashdBlocksInfo.periods : [];
+            const periodSelectOptions = [{ label: 'All', value: '' }].concat(periodOptions);
 
             if (!attributes.table && sourceOptions.length > 0) {
                 setAttributes({ table: sourceOptions[0].value });
@@ -78,6 +80,20 @@
                                 { label: 'Normal', value: 'false' }
                             ],
                             onChange: (val) => setAttributes({ bar_stacked: val })
+                        }),
+                        el(SelectControl, {
+                            label: 'Period Start',
+                            value: attributes.period_start || '',
+                            options: periodSelectOptions,
+                            help: 'Optional lower bound for chart periods.',
+                            onChange: (val) => setAttributes({ period_start: val })
+                        }),
+                        el(SelectControl, {
+                            label: 'Period End',
+                            value: attributes.period_end || '',
+                            options: periodSelectOptions,
+                            help: 'Optional upper bound for chart periods.',
+                            onChange: (val) => setAttributes({ period_end: val })
                         }),
                         el(ToggleControl, {
                             label: 'Gated Content (Require Email)',

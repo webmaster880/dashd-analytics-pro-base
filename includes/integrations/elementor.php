@@ -104,6 +104,9 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 $indicator_opts = function_exists('dashd_integration_get_indicator_options')
                     ? dashd_integration_get_indicator_options()
                     : [];
+                $period_opts = function_exists('dashd_integration_get_period_options')
+                    ? dashd_integration_get_period_options()
+                    : [];
 
                 $this->start_controls_section('content_section', [
                     'label' => __('Dashboard Settings', 'dashd-analytics-pro'),
@@ -155,6 +158,23 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'default' => 'true',
                     'label_on' => __('Stacked', 'dashd-analytics-pro'),
                     'label_off' => __('Normal', 'dashd-analytics-pro'),
+                ]);
+
+                $this->add_control('period_start', [
+                    'label' => __('Period Start', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SELECT,
+                    'options' => array_merge(['' => __('Start: All', 'dashd-analytics-pro')], $period_opts),
+                    'default' => '',
+                    'description' => __('Optional lower bound for chart periods.', 'dashd-analytics-pro'),
+                    'separator' => 'before',
+                ]);
+
+                $this->add_control('period_end', [
+                    'label' => __('Period End', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SELECT,
+                    'options' => array_merge(['' => __('End: All', 'dashd-analytics-pro')], $period_opts),
+                    'default' => '',
+                    'description' => __('Optional upper bound for chart periods.', 'dashd-analytics-pro'),
                 ]);
 
                 $this->add_control('gated', [
@@ -255,6 +275,8 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 }
                 $bar_stacked = (!empty($settings['bar_stacked']) && (string) $settings['bar_stacked'] === 'true') ? 'true' : 'false';
                 $country_order = self::sanitize_country_order((string) ($settings['country_order'] ?? ''));
+                $period_start = self::sanitize_period_bound($settings['period_start'] ?? '');
+                $period_end = self::sanitize_period_bound($settings['period_end'] ?? '');
 
                 $gated = (!empty($settings['gated']) && (string) $settings['gated'] === 'true') ? 'true' : 'false';
                 $show_view_toggle = (!empty($settings['show_view_toggle']) && (string) $settings['show_view_toggle'] === 'true') ? 'true' : 'false';
@@ -271,12 +293,14 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
                 $shortcode .= sprintf(
-                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" country_order="%s" colors="%s"]',
+                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" country_order="%s" colors="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
                     esc_attr($bar_orientation),
                     esc_attr($bar_stacked),
+                    esc_attr($period_start),
+                    esc_attr($period_end),
                     esc_attr($gated),
                     esc_attr($show_view_toggle),
                     esc_attr($show_scale_toggle),
@@ -308,6 +332,20 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 }
 
                 return implode(', ', array_values($out));
+            }
+
+            protected static function sanitize_period_bound($raw) {
+                $raw = strtoupper(trim((string) (is_scalar($raw) ? $raw : '')));
+                if ($raw === '') {
+                    return '';
+                }
+                if (preg_match('/^(\d{4})[-_\s]?(Q[1-4])$/', $raw, $matches) === 1) {
+                    return sprintf('%d-%s', (int) $matches[1], (string) $matches[2]);
+                }
+                if (preg_match('/^(Q[1-4])[-_\s]?(\d{4})$/', $raw, $matches) === 1) {
+                    return sprintf('%d-%s', (int) $matches[2], (string) $matches[1]);
+                }
+                return '';
             }
         }
     }

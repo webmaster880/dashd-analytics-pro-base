@@ -7,8 +7,6 @@
 if (!defined('ABSPATH')) exit;
 
 function dashd_admin_constructor_page() {
-    global $wpdb;
-
     // Подключаем локальный Chart.js для превью в конструкторе
     if (!wp_script_is('dashd-chart-js', 'enqueued')) {
         wp_enqueue_script('dashd-chart-js');
@@ -26,22 +24,9 @@ function dashd_admin_constructor_page() {
         'dashd_default' => ['label' => __('DashD Default', 'dashd-analytics-pro'),'colors' => ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7']]
     ];
     $default_palette = ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7'];
-    $period_rows = $wpdb->get_results(
-        "SELECT DISTINCT data_year, data_quarter
-         FROM {$wpdb->prefix}dashd_data_records
-         WHERE data_year > 0 AND data_quarter IN ('Q1', 'Q2', 'Q3', 'Q4')
-         ORDER BY data_year ASC, FIELD(data_quarter, 'Q1', 'Q2', 'Q3', 'Q4') ASC"
-    );
-    $period_options = [];
-    foreach ((array) $period_rows as $period_row) {
-        $year = (int) ($period_row->data_year ?? 0);
-        $quarter = strtoupper(trim((string) ($period_row->data_quarter ?? '')));
-        if ($year <= 0 || !in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
-            continue;
-        }
-        $value = sprintf('%d-%s', $year, $quarter);
-        $period_options[$value] = sprintf('%s %d', $quarter, $year);
-    }
+    $period_options = function_exists('dashd_integration_get_period_options')
+        ? dashd_integration_get_period_options()
+        : [];
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Widget Constructor', 'dashd-analytics-pro'); ?> <span class="dashd-badge">v<?php echo esc_html((string) DASHD_VERSION); ?></span></h1>

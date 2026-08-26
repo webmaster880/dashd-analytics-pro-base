@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.4`
+- Stable version: `11.9.5`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -180,8 +180,12 @@ Parameters:
 Используйте вкладки `Countries Translation` / `Indicators Translation` или CSV-экспорт/импорт словарей.
 
 В `Countries Translation` можно дополнительно указать `Flag URL` для страны.
-Если ссылка заполнена, frontend-легенда покажет флаг в круглой маске рядом с названием страны.
-Если ссылка не задана, используется обычная круглая цветовая метка.
+Если ссылка заполнена, frontend-легенда покажет флаг в круглой маске рядом с названием страны
+на цветной плашке, соответствующей цвету серии графика.
+Если ссылка не задана, используется обычная круглая цветовая метка на такой же плашке.
+
+Настройки диапазона периода (`period_start` / `period_end`) доступны не только в shortcode,
+но и в Admin Constructor, Elementor widget, Gutenberg block и YOOtheme Pro element.
 
 **Почему gated download отклоняет email?**
 
@@ -360,7 +364,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.4`
+Latest release: `11.9.5`
 ---
 
 ## Notes

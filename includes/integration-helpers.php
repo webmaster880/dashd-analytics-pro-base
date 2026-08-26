@@ -130,3 +130,39 @@ if (!function_exists('dashd_integration_get_indicator_options')) {
         return $cached;
     }
 }
+
+if (!function_exists('dashd_integration_get_period_options')) {
+    /**
+     * Return available raw period options mapped as YYYY-QN => QN YYYY.
+     *
+     * @return array<string,string>
+     */
+    function dashd_integration_get_period_options() {
+        global $wpdb;
+        static $cached = null;
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $cached = [];
+        $rows = $wpdb->get_results(
+            "SELECT DISTINCT data_year, data_quarter
+             FROM {$wpdb->prefix}dashd_data_records
+             WHERE data_year > 0 AND data_quarter IN ('Q1', 'Q2', 'Q3', 'Q4')
+             ORDER BY data_year ASC, FIELD(data_quarter, 'Q1', 'Q2', 'Q3', 'Q4') ASC"
+        );
+
+        foreach ((array) $rows as $row) {
+            $year = (int) ($row->data_year ?? 0);
+            $quarter = strtoupper(trim((string) ($row->data_quarter ?? '')));
+            if ($year <= 0 || !in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+                continue;
+            }
+
+            $cached[sprintf('%d-%s', $year, $quarter)] = sprintf('%s %d', $quarter, $year);
+        }
+
+        return $cached;
+    }
+}

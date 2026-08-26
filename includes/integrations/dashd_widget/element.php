@@ -52,6 +52,18 @@ $color_presets = [
     'Strict Monochrome' => '#212529, #343A40, #495057, #6C757D, #ADB5BD',
 ];
 
+$period_options = ['All' => ''];
+if (\function_exists('dashd_integration_get_period_options')) {
+    foreach (\dashd_integration_get_period_options() as $period_value => $period_label) {
+        $period_value = \sanitize_text_field((string) $period_value);
+        $period_label = \sanitize_text_field((string) $period_label);
+        if ($period_value === '' || $period_label === '') {
+            continue;
+        }
+        $period_options[$period_label] = $period_value;
+    }
+}
+
 return [
     'fields' => [
         'indicators' => [
@@ -99,6 +111,20 @@ return [
             'type' => 'checkbox',
             'text' => 'Stacked',
             'default' => true,
+        ],
+        'period_start' => [
+            'label' => 'Period Start',
+            'type' => 'select',
+            'options' => $period_options,
+            'description' => 'Optional lower bound for chart periods.',
+            'source' => true,
+        ],
+        'period_end' => [
+            'label' => 'Period End',
+            'type' => 'select',
+            'options' => $period_options,
+            'description' => 'Optional upper bound for chart periods.',
+            'source' => true,
         ],
         'gated' => [
             'label' => 'Gated Content',
@@ -322,6 +348,8 @@ return [
                         'scale',
                         'bar_orientation',
                         'bar_stacked',
+                        'period_start',
+                        'period_end',
                         'gated',
                         'show_view_toggle',
                         'show_scale_toggle',

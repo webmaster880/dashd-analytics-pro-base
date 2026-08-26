@@ -23,6 +23,8 @@
         "show_periods": true,
         "show_data_warnings": true,
         "country_order": "",
+        "period_start": "",
+        "period_end": "",
         "colors": "#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7",
         "colors_custom": "",
         "custom_color_1": "",
