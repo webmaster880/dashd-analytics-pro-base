@@ -903,9 +903,9 @@ function dashd_render_front_widget($atts) {
                 const textColor = getLegendTextColor(color);
                 const hiddenClass = chart.isDatasetVisible(datasetIndex) ? '' : ' is-hidden';
                 const marker = flagUrl
-                    ? `<span class="dashd-legend-flag"><img src="${escapeHtml(flagUrl)}" alt=""></span>`
-                    : `<span class="dashd-legend-color"></span>`;
-                return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" style="--dashd-legend-bg:${escapeHtml(color)};--dashd-legend-text:${escapeHtml(textColor)};">${marker}<span>${escapeHtml(label)}</span></button>`;
+                    ? `<span class="dashd-legend-flag" style="display:inline-flex;width:20px;height:20px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.85);background:rgba(255,255,255,0.25);flex:0 0 auto;"><img src="${escapeHtml(flagUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></span>`
+                    : `<span class="dashd-legend-color" style="display:inline-flex;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.88);box-shadow:inset 0 0 0 2px rgba(255,255,255,0.35);flex:0 0 auto;"></span>`;
+                return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" style="--dashd-legend-bg:${escapeHtml(color)};--dashd-legend-text:${escapeHtml(textColor)};background:${escapeHtml(color)};background-color:${escapeHtml(color)};color:${escapeHtml(textColor)};-webkit-print-color-adjust:exact;print-color-adjust:exact;">${marker}<span style="color:inherit;">${escapeHtml(label)}</span></button>`;
             }).join('');
 
             legendBox.querySelectorAll('.dashd-html-legend-item').forEach((button) => {
@@ -2221,6 +2221,63 @@ function dashd_render_front_widget($atts) {
                     });
                 };
 
+                const normalizePdfLegendStyles = (scope) => {
+                    if (!scope) return;
+                    const legend = scope.querySelector('.dashd-html-legend');
+                    if (!legend) return;
+
+                    legend.style.display = legend.innerHTML.trim() ? 'flex' : 'none';
+                    legend.style.justifyContent = 'center';
+                    legend.style.alignItems = 'center';
+                    legend.style.flexWrap = 'wrap';
+                    legend.style.gap = '8px 10px';
+
+                    legend.querySelectorAll('.dashd-html-legend-item').forEach((item) => {
+                        const bg = item.style.getPropertyValue('--dashd-legend-bg') || item.style.backgroundColor || '#94a3b8';
+                        const text = item.style.getPropertyValue('--dashd-legend-text') || item.style.color || '#ffffff';
+                        item.style.display = 'inline-flex';
+                        item.style.alignItems = 'center';
+                        item.style.gap = '7px';
+                        item.style.padding = '5px 12px 5px 6px';
+                        item.style.border = '0';
+                        item.style.borderRadius = '999px';
+                        item.style.background = bg;
+                        item.style.backgroundColor = bg;
+                        item.style.color = text;
+                        item.style.fontSize = '12px';
+                        item.style.fontWeight = '600';
+                        item.style.lineHeight = '1.2';
+                        item.style.transform = 'none';
+                        item.style.webkitPrintColorAdjust = 'exact';
+                        item.style.printColorAdjust = 'exact';
+                    });
+
+                    legend.querySelectorAll('.dashd-legend-flag, .dashd-legend-color').forEach((marker) => {
+                        marker.style.display = 'inline-flex';
+                        marker.style.width = '20px';
+                        marker.style.height = '20px';
+                        marker.style.borderRadius = '50%';
+                        marker.style.flex = '0 0 auto';
+                    });
+
+                    legend.querySelectorAll('.dashd-legend-flag').forEach((marker) => {
+                        marker.style.overflow = 'hidden';
+                        marker.style.border = '2px solid rgba(255,255,255,0.85)';
+                        marker.style.background = 'rgba(255,255,255,0.25)';
+                    });
+
+                    legend.querySelectorAll('.dashd-legend-flag img').forEach((img) => {
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        img.style.display = 'block';
+                    });
+
+                    legend.querySelectorAll('.dashd-legend-color').forEach((marker) => {
+                        marker.style.background = 'rgba(255,255,255,0.88)';
+                    });
+                };
+
                 const buildLinePdfVerticalTable = () => {
                     if (viewMode !== 'line' || !trendData || !trendData.periods || !trendData.indicators) {
                         return null;
@@ -2315,6 +2372,7 @@ function dashd_render_front_widget($atts) {
                 const origScrollOverflow = tableScroll ? tableScroll.style.overflow : '';
                 const origScrollMaxHeight = tableScroll ? tableScroll.style.maxHeight : '';
 
+                root.classList.add('dashd-pdf-exporting');
                 if (viewScaleToggles) viewScaleToggles.style.display = 'none';
                 if (pWrap) pWrap.style.display = 'none';
                 if (cBox) cBox.style.display = 'none';
@@ -2404,9 +2462,11 @@ function dashd_render_front_widget($atts) {
                 }
                 convertedSvgImages = await prepareSvgImagesForCapture(root);
                 await waitForImages(root);
+                normalizePdfLegendStyles(root);
                 sparklineCanvasState = isLinePdfMode ? [] : prepareSparklineCanvasesForCapture(root);
 
                 const cleanupPdfDomState = () => {
+                    root.classList.remove('dashd-pdf-exporting');
                     if(wm) wm.style.display = 'none';
                     if(footer) footer.style.display = 'none';
                     if (header) {
@@ -2442,9 +2502,18 @@ function dashd_render_front_widget($atts) {
                     const canvas = await html2canvas(root, {
                         scale: 2,
                         useCORS: true,
+                        allowTaint: false,
+                        imageTimeout: 3000,
                         backgroundColor: '#ffffff',
                         windowWidth: root.scrollWidth,
                         windowHeight: root.scrollHeight,
+                        onclone: (doc) => {
+                            const clonedRoot = doc.getElementById(rootId);
+                            if (clonedRoot) {
+                                clonedRoot.classList.add('dashd-pdf-exporting');
+                                normalizePdfLegendStyles(clonedRoot);
+                            }
+                        },
                         ignoreElements: (el) => {
                             if (!el || !el.tagName) return false;
                             if (el.tagName.toLowerCase() === 'canvas' && el.classList && el.classList.contains('dashd-sparkline')) {

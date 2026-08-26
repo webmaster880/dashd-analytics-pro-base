@@ -291,6 +291,24 @@
     box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35);
 }
 
+.dashd-pdf-exporting .dashd-html-legend {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
+.dashd-pdf-exporting .dashd-html-legend-item {
+    transform: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.dashd-pdf-exporting .dashd-html-legend-item:hover,
+.dashd-pdf-exporting .dashd-html-legend-item:focus {
+    transform: none !important;
+}
+
 .dashd-mobile-controls {
     display: none;
     width: 100%;

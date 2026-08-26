@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.6`
+- Stable version: `11.9.7`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -17,7 +17,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 - Синхронизирует и хранит данные в собственной реляционной схеме.
 - Рендерит интерактивные графики (`bar`, `line`, `donut`) через `Chart.js`.
 - Строит расширенную таблицу с динамикой (QoQ/YoY), спарклайнами и экспортом.
-- Экспортирует отчеты в CSV/PDF с брендингом (логотип, watermark, подпись).
+- Экспортирует отчеты в CSV/PDF с брендингом (логотип, watermark, подпись) и HTML-легендой с цветными плашками/флагами стран.
 - Поддерживает gated download (email перед экспортом).
 - Поддерживает интеграции с Gutenberg, Elementor, YOOtheme Pro.
 
@@ -364,7 +364,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.6`
+Latest release: `11.9.7`
 ---
 
 ## Notes

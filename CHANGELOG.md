@@ -70,6 +70,10 @@ All notable changes to this project are documented in this file.
   - YOOtheme Pro.
 
 ### Fixed
+- PDF report export now preserves the custom HTML legend styling:
+  - country legend pills keep their chart colors in generated PDFs;
+  - circular flag/color markers are normalized before `html2canvas` capture;
+  - export uses safer image capture options to avoid cross-origin flag images breaking PDF generation.
 - Multi-indicator default period selection:
   - widget no longer defaults to `Q4` for the latest year when `Q4` data is missing;
   - default now resolves to the latest actually available quarter of the latest year.
