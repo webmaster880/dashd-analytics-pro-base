@@ -2278,9 +2278,9 @@ function dashd_render_front_widget($atts) {
                     });
                 };
 
-                const buildPdfLegend = () => {
+                const getPdfLegendEntries = () => {
                     if (!chart || !chart.data) {
-                        return null;
+                        return [];
                     }
 
                     const datasets = Array.isArray(chart.data.datasets) ? chart.data.datasets : [];
@@ -2301,43 +2301,42 @@ function dashd_render_front_widget($atts) {
                         });
                     });
 
-                    if (!entries.length) return null;
+                    return entries;
+                };
 
-                    const legend = document.createElement('div');
-                    legend.className = 'dashd-temp-pdf-legend';
-                    legend.setAttribute('data-html2canvas-ignore', 'false');
-                    legend.style.display = 'block';
-                    legend.style.margin = '14px 0 18px';
-                    legend.style.minHeight = '30px';
-                    legend.style.width = '100%';
-                    legend.style.position = 'relative';
-                    legend.style.zIndex = '1';
-                    legend.style.textAlign = 'center';
+                const drawPdfLegendIntoCanvas = (sourceCanvas, entries) => {
+                    if (!sourceCanvas || !Array.isArray(entries) || !entries.length || !chartBox) {
+                        return sourceCanvas;
+                    }
 
-                    const widthSource = chartBox || root;
-                    const width = Math.max(320, Math.round(widthSource.getBoundingClientRect().width || widthSource.clientWidth || 800));
-                    const scale = Math.max(2, Math.min(3, Math.ceil(window.devicePixelRatio || 1)));
+                    const rootRect = root.getBoundingClientRect();
+                    const chartRect = chartBox.getBoundingClientRect();
+                    const cssHeight = Math.max(root.scrollHeight, rootRect.height, 1);
+                    const cssWidth = Math.max(root.scrollWidth, rootRect.width, 1);
+                    const scaleX = sourceCanvas.width / cssWidth;
+                    const scaleY = sourceCanvas.height / cssHeight;
+                    const scale = Math.max(1, Math.min(scaleX, scaleY));
                     const fontSize = 12;
                     const fontFamily = 'Arial, sans-serif';
-                    const pillHeight = 30;
-                    const markerSize = 18;
-                    const gap = 10;
-                    const rowGap = 8;
+                    const pillHeight = 30 * scale;
+                    const markerSize = 18 * scale;
+                    const gap = 10 * scale;
+                    const rowGap = 8 * scale;
                     const rowHeight = pillHeight + rowGap;
-                    const horizontalPadding = 12;
-                    const innerGap = 7;
-                    const maxRowWidth = width - 20;
+                    const horizontalPadding = 12 * scale;
+                    const innerGap = 7 * scale;
+                    const maxRowWidth = sourceCanvas.width - (20 * scale);
 
-                    const measureCanvas = document.createElement('canvas');
-                    const measureCtx = measureCanvas.getContext('2d');
-                    if (!measureCtx) return null;
-                    measureCtx.font = `600 ${fontSize}px ${fontFamily}`;
+                    const finalCanvas = document.createElement('canvas');
+                    const ctx2d = finalCanvas.getContext('2d');
+                    if (!ctx2d) return sourceCanvas;
+                    ctx2d.font = `600 ${fontSize * scale}px ${fontFamily}`;
 
                     const rows = [[]];
                     let rowWidth = 0;
                     entries.forEach((entry) => {
-                        const textWidth = Math.ceil(measureCtx.measureText(entry.label).width);
-                        const pillWidth = Math.max(70, horizontalPadding + markerSize + innerGap + textWidth + horizontalPadding);
+                        const textWidth = Math.ceil(ctx2d.measureText(entry.label).width);
+                        const pillWidth = Math.max(70 * scale, horizontalPadding + markerSize + innerGap + textWidth + horizontalPadding);
                         const nextWidth = rowWidth === 0 ? pillWidth : rowWidth + gap + pillWidth;
                         if (nextWidth > maxRowWidth && rows[rows.length - 1].length) {
                             rows.push([]);
@@ -2348,22 +2347,36 @@ function dashd_render_front_widget($atts) {
                         rowWidth = rowWidth === 0 ? pillWidth : rowWidth + gap + pillWidth;
                     });
 
-                    const height = Math.max(pillHeight, rows.length * pillHeight + Math.max(0, rows.length - 1) * rowGap);
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'dashd-temp-pdf-legend-canvas';
-                    canvas.width = width * scale;
-                    canvas.height = height * scale;
-                    canvas.style.display = 'block';
-                    canvas.style.width = `${width}px`;
-                    canvas.style.height = `${height}px`;
-                    canvas.style.maxWidth = '100%';
-                    canvas.style.margin = '0 auto';
+                    const legendHeight = Math.ceil(Math.max(pillHeight, rows.length * pillHeight + Math.max(0, rows.length - 1) * rowGap));
+                    const legendMarginTop = 14 * scale;
+                    const legendMarginBottom = 18 * scale;
+                    const insertY = Math.max(
+                        0,
+                        Math.min(
+                            sourceCanvas.height,
+                            Math.round((chartRect.bottom - rootRect.top + root.scrollTop) * scaleY + legendMarginTop)
+                        )
+                    );
+                    const extraHeight = Math.ceil(legendHeight + legendMarginBottom);
 
-                    const ctx2d = canvas.getContext('2d');
-                    if (!ctx2d) return null;
-                    ctx2d.scale(scale, scale);
-                    ctx2d.clearRect(0, 0, width, height);
-                    ctx2d.font = `600 ${fontSize}px ${fontFamily}`;
+                    finalCanvas.width = sourceCanvas.width;
+                    finalCanvas.height = sourceCanvas.height + extraHeight;
+                    ctx2d.fillStyle = '#ffffff';
+                    ctx2d.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                    ctx2d.drawImage(sourceCanvas, 0, 0, sourceCanvas.width, insertY, 0, 0, sourceCanvas.width, insertY);
+                    ctx2d.drawImage(
+                        sourceCanvas,
+                        0,
+                        insertY,
+                        sourceCanvas.width,
+                        sourceCanvas.height - insertY,
+                        0,
+                        insertY + extraHeight,
+                        sourceCanvas.width,
+                        sourceCanvas.height - insertY
+                    );
+
+                    ctx2d.font = `600 ${fontSize * scale}px ${fontFamily}`;
                     ctx2d.textBaseline = 'middle';
 
                     const drawRoundRect = (ctx, x, y, w, h, r) => {
@@ -2383,8 +2396,8 @@ function dashd_render_front_widget($atts) {
 
                     rows.forEach((row, rowIndex) => {
                         const totalWidth = row.reduce((sum, item) => sum + item.pillWidth, 0) + Math.max(0, row.length - 1) * gap;
-                        let x = Math.max(0, (width - totalWidth) / 2);
-                        const y = rowIndex * rowHeight;
+                        let x = Math.max(0, (sourceCanvas.width - totalWidth) / 2);
+                        const y = insertY + rowIndex * rowHeight;
 
                         row.forEach((entry) => {
                             drawRoundRect(ctx2d, x, y, entry.pillWidth, pillHeight, pillHeight / 2);
@@ -2404,9 +2417,7 @@ function dashd_render_front_widget($atts) {
                         });
                     });
 
-                    legend.appendChild(canvas);
-
-                    return legend;
+                    return finalCanvas;
                 };
 
                 const buildLinePdfVerticalTable = () => {
@@ -2489,7 +2500,7 @@ function dashd_render_front_widget($atts) {
                 let convertedSvgImages = [];
                 let sparklineCanvasState = [];
                 let tempLinePdfTable = null;
-                let tempPdfLegend = null;
+                const pdfLegendEntries = getPdfLegendEntries();
                 let origChartLegendDisplay = null;
                 let restoreChartLegend = false;
                 const isLinePdfMode = viewMode === 'line';
@@ -2573,16 +2584,10 @@ function dashd_render_front_widget($atts) {
                     root.insertBefore(tempHeader, root.firstChild);
                 }
 
-                tempPdfLegend = buildPdfLegend();
-                if (tempPdfLegend && chartBox && chartBox.parentNode) {
-                    if (htmlLegend) {
-                        htmlLegend.style.display = 'none';
-                        chartBox.parentNode.insertBefore(tempPdfLegend, htmlLegend);
-                    } else {
-                        chartBox.parentNode.insertBefore(tempPdfLegend, chartBox.nextSibling);
-                    }
+                if (pdfLegendEntries.length && htmlLegend) {
+                    htmlLegend.style.display = 'none';
                 }
-                if (tempPdfLegend && chart && chart.options && chart.options.plugins && chart.options.plugins.legend) {
+                if (pdfLegendEntries.length && chart && chart.options && chart.options.plugins && chart.options.plugins.legend) {
                     origChartLegendDisplay = chart.options.plugins.legend.display;
                     chart.options.plugins.legend.display = false;
                     restoreChartLegend = true;
@@ -2617,9 +2622,6 @@ function dashd_render_front_widget($atts) {
                 convertedSvgImages = await prepareSvgImagesForCapture(root);
                 await waitForImages(root);
                 normalizePdfLegendStyles(root);
-                if (tempPdfLegend) {
-                    await new Promise(r => setTimeout(r, 100));
-                }
                 sparklineCanvasState = isLinePdfMode ? [] : prepareSparklineCanvasesForCapture(root);
 
                 const cleanupPdfDomState = () => {
@@ -2643,9 +2645,6 @@ function dashd_render_front_widget($atts) {
                     if (htmlLegend) htmlLegend.style.display = origHtmlLegendDisplay;
                     root.querySelectorAll('.dashd-temp-pdf-label').forEach(el => el.remove());
 
-                    if (tempPdfLegend && tempPdfLegend.parentNode) {
-                        tempPdfLegend.parentNode.removeChild(tempPdfLegend);
-                    }
                     if (restoreChartLegend && chart && chart.options && chart.options.plugins && chart.options.plugins.legend) {
                         chart.options.plugins.legend.display = origChartLegendDisplay;
                         chart.update('none');
@@ -2689,13 +2688,14 @@ function dashd_render_front_widget($atts) {
                         }
                     });
 
+                    const finalCanvas = drawPdfLegendIntoCanvas(canvas, pdfLegendEntries);
                     cleanupPdfDomState();
 
-                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    const imgData = finalCanvas.toDataURL('image/jpeg', 1.0);
                     const { jsPDF } = window.jspdf;
 
                     const pdfWidth = 210;
-                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    const pdfHeight = (finalCanvas.height * pdfWidth) / finalCanvas.width;
 
                     const pdf = new jsPDF({
                         orientation: pdfWidth > pdfHeight ? 'l' : 'p',
