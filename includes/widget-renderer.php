@@ -2311,7 +2311,6 @@ function dashd_render_front_widget($atts) {
 
                     const rootRect = root.getBoundingClientRect();
                     const chartRect = chartBox.getBoundingClientRect();
-                    const tableRect = tableWrapper ? tableWrapper.getBoundingClientRect() : null;
                     const cssWidth = Math.max(root.scrollWidth, rootRect.width, 1);
                     const scaleX = sourceCanvas.width / cssWidth;
                     const scale = Math.max(1, scaleX);
@@ -2350,11 +2349,9 @@ function dashd_render_front_widget($atts) {
                     const legendMarginTop = 14 * scale;
                     const legendMarginBottom = 18 * scale;
                     const chartBottomY = Math.round((chartRect.bottom - rootRect.top) * scale);
-                    const tableTopY = tableRect ? Math.round((tableRect.top - rootRect.top) * scale) : 0;
-                    const fallbackY = chartBottomY + Math.round(24 * scale);
                     const insertY = Math.max(
                         0,
-                        Math.min(sourceCanvas.height, tableTopY > chartBottomY ? tableTopY : fallbackY)
+                        Math.min(sourceCanvas.height, chartBottomY + Math.round(6 * scale))
                     );
                     const extraHeight = Math.ceil(legendMarginTop + legendHeight + legendMarginBottom);
 
