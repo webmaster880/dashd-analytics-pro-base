@@ -219,6 +219,8 @@ function dashd_render_front_widget($atts) {
         'bar_orientation' => 'horizontal',
         'bar_stacked' => 'true',
         'country_order' => '',
+        'period_start' => '',
+        'period_end' => '',
     ], $atts);
 
     $default_colors = ['#336DFF', '#AF9BE2', '#3B82F6', '#BEE00F', '#7FD3F7'];
@@ -334,6 +336,22 @@ function dashd_render_front_widget($atts) {
     }
     $country_order = array_values($country_order);
 
+    $normalize_period_bound = static function($value) {
+        $value = strtoupper(trim((string) $value));
+        if ($value === '') {
+            return '';
+        }
+        if (preg_match('/^(\d{4})[-_\s]?(Q[1-4])$/', $value, $matches) === 1) {
+            return sprintf('%d-%s', (int) $matches[1], (string) $matches[2]);
+        }
+        if (preg_match('/^(Q[1-4])[-_\s]?(\d{4})$/', $value, $matches) === 1) {
+            return sprintf('%d-%s', (int) $matches[2], (string) $matches[1]);
+        }
+        return '';
+    };
+    $period_start = $normalize_period_bound($a['period_start'] ?? '');
+    $period_end = $normalize_period_bound($a['period_end'] ?? '');
+
     // Умная проверка и подключение локальных скриптов
     // Проверяем самые частые названия (handles), под которыми другие плагины могли загрузить Chart.js
     if (!wp_script_is('chart.js', 'enqueued') && !wp_script_is('chart-js', 'enqueued') && !wp_script_is('chartjs', 'enqueued') && !wp_script_is('chart', 'enqueued')) {
@@ -376,6 +394,8 @@ function dashd_render_front_widget($atts) {
         'barOrientation' => $bar_orientation,
         'barStacked' => $bar_stacked,
         'countryOrder' => $country_order,
+        'periodStart' => $period_start,
+        'periodEnd' => $period_end,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
     ];
 
@@ -506,6 +526,7 @@ function dashd_render_front_widget($atts) {
             </div>
             <canvas class="dashd-canvas"></canvas>
         </div>
+        <div class="dashd-html-legend" data-html2canvas-ignore="false"></div>
         <div class="dashd-data-quality-warning" style="display:none; margin-top:10px; padding:8px 12px; border:1px solid #fed7aa; border-radius:8px; background:#fff7ed; color:#9a3412; font-size:12px; font-weight:600;"></div>
 
         <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-top">
@@ -801,6 +822,84 @@ function dashd_render_front_widget($atts) {
             });
         };
 
+        const appendPeriodRangeParams = (url) => {
+            let nextUrl = String(url || '');
+            if (config.periodStart) {
+                nextUrl += `&period_start=${encodeURIComponent(config.periodStart)}`;
+            }
+            if (config.periodEnd) {
+                nextUrl += `&period_end=${encodeURIComponent(config.periodEnd)}`;
+            }
+            return nextUrl;
+        };
+
+        const getCountryFlagUrl = (countryName) => {
+            const sources = [
+                rawData && rawData.country_flags ? rawData.country_flags : null,
+                trendData && trendData.country_flags ? trendData.country_flags : null
+            ];
+            const directName = String(countryName ?? '').trim();
+            const normalizedName = normalizeCountryName(directName);
+            for (const source of sources) {
+                if (!source || typeof source !== 'object') continue;
+                if (source[directName]) return String(source[directName]);
+                const matchedKey = Object.keys(source).find((key) => normalizeCountryName(key) === normalizedName);
+                if (matchedKey && source[matchedKey]) return String(source[matchedKey]);
+            }
+            return '';
+        };
+
+        const getLegendItemColor = (dataset) => {
+            const bg = dataset ? dataset.backgroundColor : '';
+            if (Array.isArray(bg)) {
+                return String(bg.find(Boolean) || '#94a3b8');
+            }
+            return String(bg || dataset?.borderColor || '#94a3b8');
+        };
+
+        const shouldUseFlagLegend = (chartData) => {
+            if (!chartData || !Array.isArray(chartData.datasets)) return false;
+            return chartData.datasets.some((dataset) => getCountryFlagUrl(dataset?.label) !== '');
+        };
+
+        const renderFlagLegend = (chartData) => {
+            const legendBox = root.querySelector('.dashd-html-legend');
+            if (!legendBox) return;
+            if (!chart || !shouldUseFlagLegend(chartData)) {
+                legendBox.innerHTML = '';
+                legendBox.style.display = 'none';
+                return;
+            }
+
+            legendBox.style.display = 'flex';
+            legendBox.innerHTML = chartData.datasets.map((dataset, datasetIndex) => {
+                const label = String(dataset?.label ?? '');
+                const flagUrl = getCountryFlagUrl(label);
+                const color = getLegendItemColor(dataset);
+                const hiddenClass = chart.isDatasetVisible(datasetIndex) ? '' : ' is-hidden';
+                const marker = flagUrl
+                    ? `<span class="dashd-legend-flag" style="--dashd-legend-color:${escapeHtml(color)};"><img src="${escapeHtml(flagUrl)}" alt=""></span>`
+                    : `<span class="dashd-legend-color" style="background:${escapeHtml(color)};"></span>`;
+                return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}">${marker}<span>${escapeHtml(label)}</span></button>`;
+            }).join('');
+
+            legendBox.querySelectorAll('.dashd-html-legend-item').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const datasetIndex = Number(button.dataset.datasetIndex);
+                    if (!Number.isInteger(datasetIndex) || !chart?.data?.datasets?.[datasetIndex]) return;
+                    const dataset = chart.data.datasets[datasetIndex];
+                    const legendKey = dataset._dashdLegendKey || `${viewMode}|${curCty}|${dataset.label || datasetIndex}`;
+                    const shouldShow = !chart.isDatasetVisible(datasetIndex);
+
+                    chart.setDatasetVisibility(datasetIndex, shouldShow);
+                    if (shouldShow) hiddenLegendKeys.delete(legendKey);
+                    else hiddenLegendKeys.add(legendKey);
+                    button.classList.toggle('is-hidden', !shouldShow);
+                    chart.update();
+                });
+            });
+        };
+
         const countryColorMap = new Map();
         const hashString = (value) => {
             const input = String(value ?? '').toLowerCase().trim();
@@ -887,6 +986,32 @@ function dashd_render_front_widget($atts) {
             };
         };
 
+        const getStackRadiusByEdge = (orientation, sign, edge, radius) => {
+            const isVertical = orientation === 'vertical';
+            if (isVertical && sign < 0 && edge === 'start') {
+                return { topLeft: radius, bottomLeft: 0, topRight: radius, bottomRight: 0 };
+            }
+            if (isVertical && sign < 0 && edge === 'end') {
+                return { topLeft: 0, bottomLeft: radius, topRight: 0, bottomRight: radius };
+            }
+            if (isVertical && edge === 'start') {
+                return { topLeft: 0, bottomLeft: radius, topRight: 0, bottomRight: radius };
+            }
+            if (isVertical && edge === 'end') {
+                return { topLeft: radius, bottomLeft: 0, topRight: radius, bottomRight: 0 };
+            }
+            if (sign < 0 && edge === 'start') {
+                return { topLeft: 0, bottomLeft: 0, topRight: radius, bottomRight: radius };
+            }
+            if (sign < 0 && edge === 'end') {
+                return { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 };
+            }
+            if (edge === 'start') {
+                return { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 };
+            }
+            return { topLeft: 0, bottomLeft: 0, topRight: radius, bottomRight: radius };
+        };
+
         const getStackSegmentRadius = (countryIndex, valuesByCountry, countries, orientation = 'horizontal') => {
             return (ctx) => {
                 const pointIndex = Number(ctx?.dataIndex ?? -1);
@@ -897,13 +1022,14 @@ function dashd_render_front_widget($atts) {
                 if (!Number.isFinite(current) || current === 0) {
                     return 0;
                 }
+                const currentSign = current < 0 ? -1 : 1;
 
                 let firstVisible = -1;
                 let lastVisible = -1;
                 for (let i = 0; i < countries.length; i++) {
                     const cName = countries[i];
                     const v = Number(valuesByCountry[cName]?.[pointIndex] ?? 0);
-                    if (!Number.isFinite(v) || v === 0) continue;
+                    if (!Number.isFinite(v) || v === 0 || (v < 0 ? -1 : 1) !== currentSign) continue;
                     if (firstVisible === -1) firstVisible = i;
                     lastVisible = i;
                 }
@@ -912,14 +1038,10 @@ function dashd_render_front_widget($atts) {
                 const radius = getAdaptiveBarRadius(ctx);
                 if (firstVisible === lastVisible) return radius;
                 if (countryIndex === firstVisible) {
-                    return orientation === 'vertical'
-                        ? { topLeft: 0, bottomLeft: radius, topRight: 0, bottomRight: radius }
-                        : { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 };
+                    return getStackRadiusByEdge(orientation, currentSign, 'start', radius);
                 }
                 if (countryIndex === lastVisible) {
-                    return orientation === 'vertical'
-                        ? { topLeft: radius, bottomLeft: 0, topRight: radius, bottomRight: 0 }
-                        : { topLeft: 0, bottomLeft: 0, topRight: radius, bottomRight: radius };
+                    return getStackRadiusByEdge(orientation, currentSign, 'end', radius);
                 }
                 return 0;
             };
@@ -1134,6 +1256,7 @@ function dashd_render_front_widget($atts) {
             } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
                 url += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
             }
+            url = appendPeriodRangeParams(url);
             if (viewMode === 'line' || isSingleIndicatorYearMode()) {
                 url += '&all=true';
             } else {
@@ -1232,6 +1355,11 @@ function dashd_render_front_widget($atts) {
                 return;
             }
             if (chart) chart.destroy();
+            const htmlLegend = root.querySelector('.dashd-html-legend');
+            if (htmlLegend) {
+                htmlLegend.innerHTML = '';
+                htmlLegend.style.display = 'none';
+            }
             const canvas = root.querySelector('.dashd-canvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
@@ -1464,6 +1592,7 @@ function dashd_render_front_widget($atts) {
                     hidden: hiddenLegendKeys.has(legendKey)
                 };
             });
+            const useFlagLegend = shouldUseFlagLegend(d);
 
             const locUnits = axisDict[config.lang] || axisDict['en'];
             let unitText = '', div = 1;
@@ -1535,6 +1664,7 @@ function dashd_render_front_widget($atts) {
                     color: textColor,
                     plugins: {
                         legend: {
+                            display: !useFlagLegend,
                             position: 'bottom',
                             labels: {
                                 color: textColor,
@@ -1599,6 +1729,7 @@ function dashd_render_front_widget($atts) {
                         }) : {}
                 }
             });
+            renderFlagLegend(d);
 
             // Fallback: never leave transparent loader over canvas interactions.
             setTimeout(hideLoader, 350);
@@ -2404,6 +2535,7 @@ function dashd_render_front_widget($atts) {
                     } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
                         periodsUrl += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
                     }
+                    periodsUrl = appendPeriodRangeParams(periodsUrl);
                     const pRes = await fetch(periodsUrl);
                     if (!pRes.ok) throw new Error(`HTTP Error: ${pRes.status}`);
 

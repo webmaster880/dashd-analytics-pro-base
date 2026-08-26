@@ -36,6 +36,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
             $fq_raw = strtoupper((string) ($query['q'] ?? ''));
             $fq = in_array($fq_raw, ['Q1', 'Q2', 'Q3', 'Q4'], true) ? $fq_raw : '';
+            $period_range = self::normalize_period_range($query['period_start'] ?? '', $query['period_end'] ?? '');
 
             $cache_key = function_exists('dashd_api_public_cache_key')
                 ? dashd_api_public_cache_key('modern_data', [
@@ -45,6 +46,8 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'year' => $fy,
                     'q' => $fq,
                     'indicators' => $indicator_specs,
+                    'period_start' => $period_range['start_key'],
+                    'period_end' => $period_range['end_key'],
                     'period_model' => 'annual_q4_or_quarters_v1',
                 ])
                 : '';
@@ -95,6 +98,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     $periods_sql .= " AND r.source_key=%s";
                     $periods_args[] = $key;
                 }
+                [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+                if ($range_sql !== '') {
+                    $periods_sql .= " AND {$range_sql}";
+                    $periods_args = array_merge($periods_args, $range_args);
+                }
                 $periods_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC LIMIT %d";
                 $periods_args[] = $max_all_periods;
                 $periods = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
@@ -121,7 +129,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 }
 
                 $all_sql = "
-                    SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, r.val, r.data_year, r.data_quarter 
+                    SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, r.val, r.data_year, r.data_quarter
                     FROM {$wpdb->prefix}dashd_data_records r 
                     JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id 
                     JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
@@ -137,6 +145,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     $all_sql .= " AND r.source_key = %s";
                     $all_args[] = $key;
                 }
+                [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+                if ($range_sql !== '') {
+                    $all_sql .= " AND {$range_sql}";
+                    $all_args = array_merge($all_args, $range_args);
+                }
                 $all_sql .= " ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
                 $all_args[] = $max_all_rows;
                 $results = $wpdb->get_results($wpdb->prepare($all_sql, ...$all_args));
@@ -145,6 +158,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'periods' => $period_labels,
                     'periods_meta' => $periods_meta,
                     'countries' => [],
+                    'country_flags' => [],
                     'indicators' => [],
                     'last_sync' => $formatted_sync,
                 ];
@@ -169,6 +183,10 @@ if (!class_exists('DashD_Api_Read_Service')) {
                         }
                         $country_set[$cty_label] = true;
                         $data['countries'][] = $cty_label;
+                        $flag_url = esc_url_raw((string) ($row->flag_url ?? ''));
+                        if ($flag_url !== '') {
+                            $data['country_flags'][$cty_label] = $flag_url;
+                        }
                     }
 
                     if (!isset($data['indicators'][$ind_label])) {
@@ -204,6 +222,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     $last_sql .= " AND r.source_key=%s";
                     $last_args[] = $key;
                 }
+                [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+                if ($range_sql !== '') {
+                    $last_sql .= " AND {$range_sql}";
+                    $last_args = array_merge($last_args, $range_args);
+                }
                 $last_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC LIMIT 1";
                 $last = $wpdb->get_row($wpdb->prepare($last_sql, ...$last_args));
                 if ($last) {
@@ -226,7 +249,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $current_quarter_placeholders = implode(', ', array_fill(0, count($current_quarters), '%s'));
 
             $current_sql = "
-                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, SUM(r.val) as val
+                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
@@ -242,7 +265,12 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $current_sql .= " AND r.source_key=%s";
                 $current_args[] = $key;
             }
-            $current_sql .= " GROUP BY ind, cty, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+            if ($range_sql !== '') {
+                $current_sql .= " AND {$range_sql}";
+                $current_args = array_merge($current_args, $range_args);
+            }
+            $current_sql .= " GROUP BY ind, cty, c.flag_url, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
             $current_args[] = $max_period_rows;
             $current = $wpdb->get_results($wpdb->prepare($current_sql, ...$current_args));
 
@@ -250,7 +278,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $previous_quarters = self::resolve_period_query_quarters($key, $indicator_specs, $prev_year, $fq);
             $previous_quarter_placeholders = implode(', ', array_fill(0, count($previous_quarters), '%s'));
             $previous_sql = "
-                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, SUM(r.val) as val
+                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
@@ -266,7 +294,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $previous_sql .= " AND r.source_key=%s";
                 $previous_args[] = $key;
             }
-            $previous_sql .= " GROUP BY ind, cty, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
+            $previous_sql .= " GROUP BY ind, cty, c.flag_url, i.sort_order, i.id, c.sort_order, c.id ORDER BY i.sort_order ASC, i.id ASC, c.sort_order ASC, c.id ASC LIMIT %d";
             $previous_args[] = $max_period_rows;
             $previous = $wpdb->get_results($wpdb->prepare($previous_sql, ...$previous_args));
 
@@ -278,6 +306,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
             $data = [
                 'countries' => [],
+                'country_flags' => [],
                 'indicators' => [],
                 'previous' => [],
                 'last_sync' => $formatted_sync,
@@ -297,6 +326,10 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     }
                     $country_set[$cty_label] = true;
                     $data['countries'][] = $cty_label;
+                    $flag_url = esc_url_raw((string) ($row->flag_url ?? ''));
+                    if ($flag_url !== '') {
+                        $data['country_flags'][$cty_label] = $flag_url;
+                    }
                 }
 
                 if (!isset($data['indicators'][$ind_label])) {
@@ -346,6 +379,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_normalize_source_key((string) ($query['key'] ?? 'table1'), 'table1')
                 : sanitize_key((string) ($query['key'] ?? 'table1'));
             $indicator_specs = self::parse_indicator_specs($query['indicators'] ?? '');
+            $period_range = self::normalize_period_range($query['period_start'] ?? '', $query['period_end'] ?? '');
             if ($key === '') {
                 $key = 'table1';
             }
@@ -357,6 +391,8 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_api_public_cache_key('periods_split', [
                     'key' => $key,
                     'indicators' => $indicator_specs,
+                    'period_start' => $period_range['start_key'],
+                    'period_end' => $period_range['end_key'],
                     'period_model' => 'annual_q4_or_quarters_v1',
                 ])
                 : '';
@@ -384,6 +420,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $years_sql .= " AND r.source_key = %s";
                 $years_args[] = $key;
             }
+            [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+            if ($range_sql !== '') {
+                $years_sql .= " AND {$range_sql}";
+                $years_args = array_merge($years_args, $range_args);
+            }
             $years_sql .= " ORDER BY r.data_year DESC LIMIT %d";
             $years_args[] = $max_years;
             $years = $wpdb->get_col($wpdb->prepare($years_sql, ...$years_args));
@@ -402,6 +443,11 @@ if (!class_exists('DashD_Api_Read_Service')) {
             } else {
                 $periods_sql .= " AND r.source_key = %s";
                 $periods_args[] = $key;
+            }
+            [$range_sql, $range_args] = self::build_period_range_sql('r', $period_range);
+            if ($range_sql !== '') {
+                $periods_sql .= " AND {$range_sql}";
+                $periods_args = array_merge($periods_args, $range_args);
             }
             $periods_sql .= " ORDER BY r.data_year DESC, r.data_quarter DESC";
             $period_rows = $wpdb->get_results($wpdb->prepare($periods_sql, ...$periods_args));
@@ -583,6 +629,93 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             return [implode(' OR ', $clauses), $args];
+        }
+
+        /**
+         * @param mixed $start_raw
+         * @param mixed $end_raw
+         * @return array{start:?array{year:int,quarter:string,rank:int,key:string},end:?array{year:int,quarter:string,rank:int,key:string},start_key:string,end_key:string}
+         */
+        private static function normalize_period_range($start_raw, $end_raw) {
+            $start = self::normalize_period_bound($start_raw);
+            $end = self::normalize_period_bound($end_raw);
+
+            if (is_array($start) && is_array($end) && $start['rank'] > $end['rank']) {
+                [$start, $end] = [$end, $start];
+            }
+
+            return [
+                'start' => $start,
+                'end' => $end,
+                'start_key' => is_array($start) ? $start['key'] : '',
+                'end_key' => is_array($end) ? $end['key'] : '',
+            ];
+        }
+
+        /**
+         * @param mixed $value
+         * @return array{year:int,quarter:string,rank:int,key:string}|null
+         */
+        private static function normalize_period_bound($value) {
+            $value = strtoupper(trim((string) (is_scalar($value) ? $value : '')));
+            if ($value === '') {
+                return null;
+            }
+
+            if (preg_match('/^(\d{4})[-_\s]?(Q[1-4])$/', $value, $matches) !== 1
+                && preg_match('/^(Q[1-4])[-_\s]?(\d{4})$/', $value, $matches) === 1) {
+                $matches = [$matches[0], $matches[2], $matches[1]];
+            }
+
+            if (empty($matches[1]) || empty($matches[2])) {
+                return null;
+            }
+
+            $year = (int) $matches[1];
+            $quarter = self::normalize_quarter((string) $matches[2]);
+            if ($year <= 0 || $quarter === '') {
+                return null;
+            }
+
+            $rank = ($year * 10) + self::quarter_rank($quarter);
+            return [
+                'year' => $year,
+                'quarter' => $quarter,
+                'rank' => $rank,
+                'key' => sprintf('%d-%s', $year, $quarter),
+            ];
+        }
+
+        /**
+         * @param array<string,mixed> $range
+         * @return array{0:string,1:array<int,mixed>}
+         */
+        private static function build_period_range_sql($alias, array $range) {
+            $alias = trim((string) $alias);
+            if ($alias === '') {
+                $alias = 'r';
+            }
+
+            $period_expr = "(({$alias}.data_year * 10) + CASE {$alias}.data_quarter WHEN 'Q1' THEN 1 WHEN 'Q2' THEN 2 WHEN 'Q3' THEN 3 WHEN 'Q4' THEN 4 ELSE 0 END)";
+            $clauses = [];
+            $args = [];
+            $start = is_array($range['start'] ?? null) ? $range['start'] : null;
+            $end = is_array($range['end'] ?? null) ? $range['end'] : null;
+
+            if ($start !== null && !empty($start['rank'])) {
+                $clauses[] = "{$period_expr} >= %d";
+                $args[] = (int) $start['rank'];
+            }
+            if ($end !== null && !empty($end['rank'])) {
+                $clauses[] = "{$period_expr} <= %d";
+                $args[] = (int) $end['rank'];
+            }
+
+            if (empty($clauses)) {
+                return ['', []];
+            }
+
+            return [implode(' AND ', $clauses), $args];
         }
 
         /**

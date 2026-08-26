@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.3`
+- Stable version: `11.9.4`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -159,6 +159,8 @@ Parameters:
 - `show_scale_toggle` — `true | false`, показать/скрыть переключатель `Lin / Log`.
 - `show_periods` — `true | false`, показать/скрыть выбор года/квартала.
 - `show_data_warnings` — `true | false`, показать/скрыть frontend-предупреждения об отрицательных/некорректных значениях.
+- `period_start` — необязательная нижняя граница периода в формате `YYYY-QN`, например `2021-Q1`.
+- `period_end` — необязательная верхняя граница периода в формате `YYYY-QN`, например `2026-Q1`.
 - `bar_orientation` — `horizontal | vertical`.
 - `bar_stacked` — `true | false`, stacked или grouped bar.
 - `country_order` — ручная сортировка стран через запятую.
@@ -176,6 +178,10 @@ Parameters:
 **Как перевести названия стран и индикаторов?**
 
 Используйте вкладки `Countries Translation` / `Indicators Translation` или CSV-экспорт/импорт словарей.
+
+В `Countries Translation` можно дополнительно указать `Flag URL` для страны.
+Если ссылка заполнена, frontend-легенда покажет флаг в круглой маске рядом с названием страны.
+Если ссылка не задана, используется обычная круглая цветовая метка.
 
 **Почему gated download отклоняет email?**
 
@@ -354,7 +360,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.3`
+Latest release: `11.9.4`
 ---
 
 ## Notes

@@ -32,8 +32,13 @@ All notable changes to this project are documented in this file.
   - frontend chart points/bars and detailed table cells show warning markers/tooltips;
   - `Donut` view falls back to `Bar` and `Log` scale falls back to `Linear` when negative values are present.
 - Frontend data quality warnings can now be controlled per widget via `show_data_warnings`.
+- Frontend/API widgets can now limit chart output with optional `period_start` / `period_end` shortcode attributes (`YYYY-QN`).
+- Negative stacked bar segments now receive rounded outer edges on the negative side of the axis.
 
 ### Added
+- Admin Constructor period range dropdowns for selecting the visible chart window.
+- Country `Flag URL` field in `Countries Translation`, including CSV import/export support.
+- Optional frontend HTML legend with circular country flags; falls back to circular color markers when no flag URL is set.
 - New `Settings → Logs` management actions:
   - export sync logs to CSV;
   - clear sync logs (with confirmation).

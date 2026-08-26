@@ -7,6 +7,8 @@
 if (!defined('ABSPATH')) exit;
 
 function dashd_admin_constructor_page() {
+    global $wpdb;
+
     // Подключаем локальный Chart.js для превью в конструкторе
     if (!wp_script_is('dashd-chart-js', 'enqueued')) {
         wp_enqueue_script('dashd-chart-js');
@@ -24,6 +26,22 @@ function dashd_admin_constructor_page() {
         'dashd_default' => ['label' => __('DashD Default', 'dashd-analytics-pro'),'colors' => ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7']]
     ];
     $default_palette = ['#336DFF','#AF9BE2','#3B82F6','#BEE00F','#7FD3F7'];
+    $period_rows = $wpdb->get_results(
+        "SELECT DISTINCT data_year, data_quarter
+         FROM {$wpdb->prefix}dashd_data_records
+         WHERE data_year > 0 AND data_quarter IN ('Q1', 'Q2', 'Q3', 'Q4')
+         ORDER BY data_year ASC, FIELD(data_quarter, 'Q1', 'Q2', 'Q3', 'Q4') ASC"
+    );
+    $period_options = [];
+    foreach ((array) $period_rows as $period_row) {
+        $year = (int) ($period_row->data_year ?? 0);
+        $quarter = strtoupper(trim((string) ($period_row->data_quarter ?? '')));
+        if ($year <= 0 || !in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+            continue;
+        }
+        $value = sprintf('%d-%s', $year, $quarter);
+        $period_options[$value] = sprintf('%s %d', $quarter, $year);
+    }
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Widget Constructor', 'dashd-analytics-pro'); ?> <span class="dashd-badge">v<?php echo esc_html((string) DASHD_VERSION); ?></span></h1>
@@ -73,6 +91,27 @@ function dashd_admin_constructor_page() {
                             <option value="false"><?php esc_html_e('Bar Type: Normal', 'dashd-analytics-pro'); ?></option>
                         </select>
                     </div>
+                </div>
+
+                <div class="uk-margin" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Period Range:', 'dashd-analytics-pro'); ?></label>
+                    <div style="display:flex; gap:10px;">
+                        <select id="c_period_start" class="uk-select" style="flex:1;">
+                            <option value=""><?php esc_html_e('Start: All', 'dashd-analytics-pro'); ?></option>
+                            <?php foreach ($period_options as $period_value => $period_label): ?>
+                                <option value="<?php echo esc_attr((string) $period_value); ?>"><?php echo esc_html(sprintf(__('Start: %s', 'dashd-analytics-pro'), (string) $period_label)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select id="c_period_end" class="uk-select" style="flex:1;">
+                            <option value=""><?php esc_html_e('End: All', 'dashd-analytics-pro'); ?></option>
+                            <?php foreach ($period_options as $period_value => $period_label): ?>
+                                <option value="<?php echo esc_attr((string) $period_value); ?>"><?php echo esc_html(sprintf(__('End: %s', 'dashd-analytics-pro'), (string) $period_label)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <p style="font-size: 11px; color: #646970; margin-top: 5px;">
+                        <?php esc_html_e('Optional chart period window. Leave both fields as All to show every available period.', 'dashd-analytics-pro'); ?>
+                    </p>
                 </div>
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
@@ -198,6 +237,8 @@ function dashd_admin_constructor_page() {
             const showDataWarnings = document.getElementById('c_show_data_warnings').checked ? 'true' : 'false';
             const barOrientation = document.getElementById('c_bar_orientation').value;
             const barStacked = document.getElementById('c_bar_stacked').value;
+            const periodStart = document.getElementById('c_period_start').value;
+            const periodEnd = document.getElementById('c_period_end').value;
             const countryOrder = String(document.getElementById('c_country_order').value || '').trim().replace(/"/g, "'");
             
             let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
@@ -208,6 +249,12 @@ function dashd_admin_constructor_page() {
             shortcode += ` show_data_warnings="${showDataWarnings}"`;
             shortcode += ` bar_orientation="${barOrientation}"`;
             shortcode += ` bar_stacked="${barStacked}"`;
+            if (periodStart !== '') {
+                shortcode += ` period_start="${periodStart}"`;
+            }
+            if (periodEnd !== '') {
+                shortcode += ` period_end="${periodEnd}"`;
+            }
             if (countryOrder !== '') {
                 shortcode += ` country_order="${countryOrder}"`;
             }
@@ -253,7 +300,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_bar_orientation', 'c_bar_stacked', 'c_country_order'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;

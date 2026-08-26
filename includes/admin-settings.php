@@ -1298,6 +1298,7 @@ function dashd_render_lang_table($table_suffix, $title) {
     global $wpdb;
     $table = $wpdb->prefix . $table_suffix;
     $is_indicator = ($table_suffix === 'dashd_indicators');
+    $is_country = ($table_suffix === 'dashd_countries');
 
     $all_sources = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings");
     $allowed_target_sources = ['all' => true];
@@ -1366,6 +1367,9 @@ function dashd_render_lang_table($table_suffix, $title) {
                 'name_ka' => sanitize_text_field($tr['ka']),
                 'sort_order' => isset($tr['sort_order']) ? (int)$tr['sort_order'] : 0 // Сохраняем сортировку
             ];
+            if ($is_country) {
+                $update_data['flag_url'] = esc_url_raw((string) ($tr['flag_url'] ?? ''));
+            }
             
             if ($is_indicator) {
                 $was_calc = (int)$wpdb->get_var($wpdb->prepare("SELECT is_calculated FROM $table WHERE id=%d", $id));
@@ -1422,7 +1426,10 @@ function dashd_render_lang_table($table_suffix, $title) {
                             <?php esc_html_e('English (Key)', 'dashd-analytics-pro'); ?>
                         </th>
                         
-                        <th style="width: 5%; text-align:center;">Order</th> <?php if ($is_indicator): ?>
+                        <th style="width: 5%; text-align:center;">Order</th> <?php if ($is_country): ?>
+                            <th style="width: 14%; text-align:center;">Flag URL</th>
+                            <?php $lang_width = '13.5%'; ?>
+                        <?php elseif ($is_indicator): ?>
                             <th style="width: 4%; text-align:center;" title="Calculated Indicator?">Calc?</th>
                             <th style="width: 10%; text-align:center;">Formula</th>
                             <th style="width: 10%; text-align:center;">Target Table</th>
@@ -1452,7 +1459,17 @@ function dashd_render_lang_table($table_suffix, $title) {
                             <input type="number" name="langs[<?php echo $i->id; ?>][sort_order]" value="<?php echo esc_attr($i->sort_order ?? 0); ?>" style="width:100%; box-sizing: border-box; text-align:center; font-size:12px; padding: 2px;">
                         </td>
 
-                        <?php if ($is_indicator): ?>
+                        <?php if ($is_country): ?>
+                            <td>
+                                <?php $flag_url = (string) ($i->flag_url ?? ''); ?>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <?php if ($flag_url !== ''): ?>
+                                        <img src="<?php echo esc_url($flag_url); ?>" alt="" style="width:24px; height:24px; border-radius:50%; object-fit:cover; border:1px solid #d0d7de; flex:0 0 auto;">
+                                    <?php endif; ?>
+                                    <input type="url" name="langs[<?php echo $i->id; ?>][flag_url]" class="regular-text" value="<?php echo esc_attr($flag_url); ?>" style="width:100%; min-width:0; box-sizing: border-box;" placeholder="https://.../flag.svg">
+                                </div>
+                            </td>
+                        <?php elseif ($is_indicator): ?>
                             <td style="text-align:center;">
                                 <input type="checkbox" name="langs[<?php echo $i->id; ?>][is_calculated]" value="1" <?php checked(!empty($i->is_calculated), true); ?>>
                             </td>
@@ -2330,6 +2347,7 @@ function dashd_handle_import_csv() {
                 'name_hy'    => dashd_admin_limit_text((string) ($row['name_hy'] ?? ''), 255),
                 'name_ro'    => dashd_admin_limit_text((string) ($row['name_ro'] ?? ''), 255),
                 'name_ka'    => dashd_admin_limit_text((string) ($row['name_ka'] ?? ''), 255),
+                'flag_url'   => esc_url_raw((string) ($row['flag_url'] ?? '')),
                 'sort_order' => $sort_order,
             ];
         }

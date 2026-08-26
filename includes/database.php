@@ -23,6 +23,7 @@ function dashd_ensure_required_columns() {
 
     $required_columns = [
         $countries_table => [
+            'flag_url' => "ALTER TABLE {$countries_table} ADD COLUMN flag_url varchar(2048) DEFAULT '' NOT NULL",
             'sort_order' => "ALTER TABLE {$countries_table} ADD COLUMN sort_order int(11) DEFAULT 0 NOT NULL",
         ],
         $indicators_table => [
@@ -73,6 +74,7 @@ function dashd_init_analytical_db() {
         name_hy varchar(255) DEFAULT NULL,
         name_ro varchar(255) DEFAULT NULL,
         name_ka varchar(255) DEFAULT NULL,
+        flag_url varchar(2048) DEFAULT '' NOT NULL,
         sort_order int(11) DEFAULT 0 NOT NULL,
         PRIMARY KEY  (id),
         UNIQUE KEY name_en (name_en),
