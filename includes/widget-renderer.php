@@ -2278,6 +2278,52 @@ function dashd_render_front_widget($atts) {
                     });
                 };
 
+                const buildPdfLegend = () => {
+                    if (!chart || !chart.data) {
+                        return null;
+                    }
+
+                    const datasets = Array.isArray(chart.data.datasets) ? chart.data.datasets : [];
+                    const entries = [];
+
+                    datasets.forEach((dataset, datasetIndex) => {
+                        if (!chart.isDatasetVisible(datasetIndex)) return;
+
+                        const label = String(dataset?.label ?? '').trim();
+                        if (!label) return;
+
+                        const color = normalizeLegendColor(getLegendItemColor(dataset));
+                        entries.push({
+                            label,
+                            color,
+                            textColor: getLegendTextColor(color),
+                            flagUrl: getCountryFlagUrl(label)
+                        });
+                    });
+
+                    if (!entries.length) return null;
+
+                    const legend = document.createElement('div');
+                    legend.className = 'dashd-html-legend dashd-temp-pdf-legend';
+                    legend.setAttribute('data-html2canvas-ignore', 'false');
+                    legend.style.display = 'flex';
+                    legend.style.justifyContent = 'center';
+                    legend.style.alignItems = 'center';
+                    legend.style.flexWrap = 'wrap';
+                    legend.style.gap = '8px 10px';
+                    legend.style.margin = '14px 0 4px';
+
+                    legend.innerHTML = entries.map((entry) => {
+                        const marker = entry.flagUrl
+                            ? `<span class="dashd-legend-flag" style="display:inline-flex;width:20px;height:20px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.85);background:rgba(255,255,255,0.25);flex:0 0 auto;"><img src="${escapeHtml(entry.flagUrl)}" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;display:block;"></span>`
+                            : `<span class="dashd-legend-color" style="display:inline-flex;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.88);box-shadow:inset 0 0 0 2px rgba(255,255,255,0.35);flex:0 0 auto;"></span>`;
+
+                        return `<span class="dashd-html-legend-item" style="display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 6px;border:0;border-radius:999px;background:${escapeHtml(entry.color)};background-color:${escapeHtml(entry.color)};color:${escapeHtml(entry.textColor)};font-size:12px;font-weight:600;line-height:1.2;box-shadow:0 4px 10px rgba(15,23,42,0.12);-webkit-print-color-adjust:exact;print-color-adjust:exact;">${marker}<span style="color:inherit;">${escapeHtml(entry.label)}</span></span>`;
+                    }).join('');
+
+                    return legend;
+                };
+
                 const buildLinePdfVerticalTable = () => {
                     if (viewMode !== 'line' || !trendData || !trendData.periods || !trendData.indicators) {
                         return null;
@@ -2358,16 +2404,22 @@ function dashd_render_front_widget($atts) {
                 let convertedSvgImages = [];
                 let sparklineCanvasState = [];
                 let tempLinePdfTable = null;
+                let tempPdfLegend = null;
+                let origChartLegendDisplay = null;
+                let restoreChartLegend = false;
                 const isLinePdfMode = viewMode === 'line';
 
                 const viewToggleNode = root.querySelector('.dashd-toggle-view');
                 const viewScaleToggles = viewToggleNode ? viewToggleNode.parentNode : null;
                 const pWrap = root.querySelector('.dashd-periods-wrap');
                 const cBox = root.querySelector('.dashd-country-btns');
+                const htmlLegend = root.querySelector('.dashd-html-legend');
+                const chartBox = root.querySelector('.dashd-chart-box');
 
                 const origViewScaleDisplay = viewScaleToggles ? viewScaleToggles.style.display : '';
                 const origPWrapDisplay = pWrap ? pWrap.style.display : '';
                 const origCBoxDisplay = cBox ? cBox.style.display : '';
+                const origHtmlLegendDisplay = htmlLegend ? htmlLegend.style.display : '';
                 const origTableDisplay = tableWrapper ? tableWrapper.style.display : '';
                 const origScrollOverflow = tableScroll ? tableScroll.style.overflow : '';
                 const origScrollMaxHeight = tableScroll ? tableScroll.style.maxHeight : '';
@@ -2436,6 +2488,23 @@ function dashd_render_front_widget($atts) {
                     root.insertBefore(tempHeader, root.firstChild);
                 }
 
+                tempPdfLegend = buildPdfLegend();
+                if (tempPdfLegend && chartBox && chartBox.parentNode) {
+                    if (htmlLegend) {
+                        htmlLegend.style.display = 'none';
+                        chartBox.parentNode.insertBefore(tempPdfLegend, htmlLegend);
+                    } else {
+                        chartBox.parentNode.insertBefore(tempPdfLegend, chartBox.nextSibling);
+                    }
+                }
+                if (tempPdfLegend && chart && chart.options && chart.options.plugins && chart.options.plugins.legend) {
+                    origChartLegendDisplay = chart.options.plugins.legend.display;
+                    chart.options.plugins.legend.display = false;
+                    restoreChartLegend = true;
+                    chart.update('none');
+                    await new Promise(r => setTimeout(r, 50));
+                }
+
                 if(wm) wm.style.display = 'block';
                 if(footer) footer.style.display = 'block';
                 if(tableWrapper) tableWrapper.style.display = isLinePdfMode ? 'none' : 'block';
@@ -2483,7 +2552,16 @@ function dashd_render_front_widget($atts) {
                     if (viewScaleToggles) viewScaleToggles.style.display = origViewScaleDisplay;
                     if (pWrap) pWrap.style.display = origPWrapDisplay;
                     if (cBox) cBox.style.display = origCBoxDisplay;
+                    if (htmlLegend) htmlLegend.style.display = origHtmlLegendDisplay;
                     root.querySelectorAll('.dashd-temp-pdf-label').forEach(el => el.remove());
+
+                    if (tempPdfLegend && tempPdfLegend.parentNode) {
+                        tempPdfLegend.parentNode.removeChild(tempPdfLegend);
+                    }
+                    if (restoreChartLegend && chart && chart.options && chart.options.plugins && chart.options.plugins.legend) {
+                        chart.options.plugins.legend.display = origChartLegendDisplay;
+                        chart.update('none');
+                    }
 
                     if (tempLinePdfTable && tempLinePdfTable.parentNode) {
                         tempLinePdfTable.parentNode.removeChild(tempLinePdfTable);

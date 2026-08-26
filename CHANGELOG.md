@@ -73,6 +73,8 @@ All notable changes to this project are documented in this file.
 - PDF report export now preserves the custom HTML legend styling:
   - country legend pills keep their chart colors in generated PDFs;
   - circular flag/color markers are normalized before `html2canvas` capture;
+  - a temporary PDF-only legend is injected from visible chart datasets when the interactive or canvas legend is hidden;
+  - Chart.js canvas legend is temporarily disabled during PDF capture to avoid duplicate legends;
   - export uses safer image capture options to avoid cross-origin flag images breaking PDF generation.
 - Multi-indicator default period selection:
   - widget no longer defaults to `Q4` for the latest year when `Q4` data is missing;

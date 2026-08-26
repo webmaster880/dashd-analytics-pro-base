@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.7`
+- Stable version: `11.9.8`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -194,6 +194,8 @@ Parameters:
 **Почему PDF не повторяет темную тему сайта?**
 
 PDF рендерится на белом фоне намеренно для читаемости и печати.
+При экспорте PDF легенда графика создается отдельным временным блоком из видимых серий,
+чтобы сохранить цветные плашки и флаги даже если интерактивная легенда скрыта на странице.
 
 ---
 
@@ -364,7 +366,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.7`
+Latest release: `11.9.8`
 ---
 
 ## Notes
