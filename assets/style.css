@@ -298,6 +298,13 @@
     flex-wrap: wrap !important;
 }
 
+.dashd-pdf-exporting .dashd-temp-pdf-legend {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
 .dashd-pdf-exporting .dashd-html-legend-item {
     transform: none !important;
     -webkit-print-color-adjust: exact;

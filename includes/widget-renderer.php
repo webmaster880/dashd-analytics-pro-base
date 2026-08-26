@@ -2223,7 +2223,7 @@ function dashd_render_front_widget($atts) {
 
                 const normalizePdfLegendStyles = (scope) => {
                     if (!scope) return;
-                    const legend = scope.querySelector('.dashd-html-legend');
+                    const legend = scope.querySelector('.dashd-temp-pdf-legend, .dashd-html-legend');
                     if (!legend) return;
 
                     legend.style.display = legend.innerHTML.trim() ? 'flex' : 'none';
@@ -2304,14 +2304,18 @@ function dashd_render_front_widget($atts) {
                     if (!entries.length) return null;
 
                     const legend = document.createElement('div');
-                    legend.className = 'dashd-html-legend dashd-temp-pdf-legend';
+                    legend.className = 'dashd-temp-pdf-legend';
                     legend.setAttribute('data-html2canvas-ignore', 'false');
                     legend.style.display = 'flex';
                     legend.style.justifyContent = 'center';
                     legend.style.alignItems = 'center';
                     legend.style.flexWrap = 'wrap';
                     legend.style.gap = '8px 10px';
-                    legend.style.margin = '14px 0 4px';
+                    legend.style.margin = '14px 0 18px';
+                    legend.style.minHeight = '30px';
+                    legend.style.width = '100%';
+                    legend.style.position = 'relative';
+                    legend.style.zIndex = '1';
 
                     legend.innerHTML = entries.map((entry) => {
                         const marker = entry.flagUrl
@@ -2532,6 +2536,9 @@ function dashd_render_front_widget($atts) {
                 convertedSvgImages = await prepareSvgImagesForCapture(root);
                 await waitForImages(root);
                 normalizePdfLegendStyles(root);
+                if (tempPdfLegend) {
+                    await new Promise(r => setTimeout(r, 100));
+                }
                 sparklineCanvasState = isLinePdfMode ? [] : prepareSparklineCanvasesForCapture(root);
 
                 const cleanupPdfDomState = () => {

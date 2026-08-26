@@ -74,6 +74,7 @@ All notable changes to this project are documented in this file.
   - country legend pills keep their chart colors in generated PDFs;
   - circular flag/color markers are normalized before `html2canvas` capture;
   - a temporary PDF-only legend is injected from visible chart datasets when the interactive or canvas legend is hidden;
+  - the PDF-only legend now uses an isolated class and inline layout styles to avoid being hidden by frontend legend CSS;
   - Chart.js canvas legend is temporarily disabled during PDF capture to avoid duplicate legends;
   - export uses safer image capture options to avoid cross-origin flag images breaking PDF generation.
 - Multi-indicator default period selection:
