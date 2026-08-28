@@ -443,7 +443,7 @@
     /* Если хотите добавить виджету легкий фон и скругление на сайте, раскомментируйте строки ниже: */
     background: #ffffff; 
     border-radius: 8px; 
-    box-shadow: 0 2px 15px rgba(0,0,0,0.03); 
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1); 
 }
 
 @media (max-width: 640px) and (orientation: portrait) {
