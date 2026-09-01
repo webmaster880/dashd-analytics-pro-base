@@ -35,6 +35,7 @@ All notable changes to this project are documented in this file.
 - Frontend/API widgets can now limit chart output with optional `period_start` / `period_end` shortcode attributes (`YYYY-QN`).
 - Negative stacked bar segments now receive rounded outer edges on the negative side of the axis.
 - Country flag legend now renders as rounded color pills matching each chart series color.
+- Country flag markers in chart legends now render without an outline while keeping circular clipping.
 
 ### Added
 - Admin Constructor period range dropdowns for selecting the visible chart window.

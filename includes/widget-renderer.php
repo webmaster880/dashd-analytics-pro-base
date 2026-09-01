@@ -903,7 +903,7 @@ function dashd_render_front_widget($atts) {
                 const textColor = getLegendTextColor(color);
                 const hiddenClass = chart.isDatasetVisible(datasetIndex) ? '' : ' is-hidden';
                 const marker = flagUrl
-                    ? `<span class="dashd-legend-flag" style="display:inline-flex;width:20px;height:20px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,0.85);background:rgba(255,255,255,0.25);flex:0 0 auto;"><img src="${escapeHtml(flagUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></span>`
+                    ? `<span class="dashd-legend-flag" style="display:inline-flex;width:20px;height:20px;border-radius:50%;overflow:hidden;border:0;background:rgba(255,255,255,0.25);flex:0 0 auto;"><img src="${escapeHtml(flagUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></span>`
                     : `<span class="dashd-legend-color" style="display:inline-flex;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.88);box-shadow:inset 0 0 0 2px rgba(255,255,255,0.35);flex:0 0 auto;"></span>`;
                 return `<button type="button" class="dashd-html-legend-item${hiddenClass}" data-dataset-index="${datasetIndex}" style="--dashd-legend-bg:${escapeHtml(color)};--dashd-legend-text:${escapeHtml(textColor)};background:${escapeHtml(color)};background-color:${escapeHtml(color)};color:${escapeHtml(textColor)};-webkit-print-color-adjust:exact;print-color-adjust:exact;">${marker}<span style="color:inherit;">${escapeHtml(label)}</span></button>`;
             }).join('');
@@ -2262,7 +2262,7 @@ function dashd_render_front_widget($atts) {
 
                     legend.querySelectorAll('.dashd-legend-flag').forEach((marker) => {
                         marker.style.overflow = 'hidden';
-                        marker.style.border = '2px solid rgba(255,255,255,0.85)';
+                        marker.style.border = '0';
                         marker.style.background = 'rgba(255,255,255,0.25)';
                     });
 
