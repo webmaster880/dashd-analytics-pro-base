@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased] - 2026-10-02
+
+### Added
+- `Settings → Display`: Last updated date format presets, a custom WordPress/PHP template, and a live server-rendered preview.
+- A shared date formatter for chart/API update timestamps and PDF reports, with WordPress timezone and page-language support when the language pack is installed.
+- Empty format uses WordPress date/time settings; the existing `d.m.Y H:i` format remains the default.
+- Date-format smoke checks using WordPress core cover presets, timezone offsets, locale restoration, missing dates, and template validation.
+
+### Changed
+- Widget data cache keys include the effective date format, locale, and timezone; saving the setting invalidates plugin caches.
+- README documents date templates, localization, preview, and fallback behavior.
+
 ## [Unreleased] - 2026-05-27
 
 ### Changed

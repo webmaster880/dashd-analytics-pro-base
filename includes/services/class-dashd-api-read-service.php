@@ -42,6 +42,10 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_api_public_cache_key('modern_data', [
                     'key' => $key,
                     'lang' => $lang,
+                    'date_format' => dashd_last_update_format(),
+                    'date_locale' => dashd_date_locale($lang),
+                    'request_locale' => get_locale(),
+                    'date_timezone' => wp_timezone_string(),
                     'all' => $is_all ? 1 : 0,
                     'year' => $fy,
                     'q' => $fq,
@@ -60,15 +64,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
             $col = 'name_' . $lang;
             $last_sync = get_option('dashd_last_global_sync', '');
-            $formatted_sync = '--';
-            if (!empty($last_sync)) {
-                $formatted_sync = function_exists('mysql2date')
-                    ? (string) mysql2date('d.m.Y H:i', (string) $last_sync, true)
-                    : (string) wp_date('d.m.Y H:i', strtotime((string) $last_sync));
-                if ($formatted_sync === '') {
-                    $formatted_sync = '--';
-                }
-            }
+            $formatted_sync = dashd_format_update_date($last_sync, null, dashd_date_locale($lang));
 
             if ($is_all) {
                 $max_all_periods = function_exists('dashd_api_limit_int')

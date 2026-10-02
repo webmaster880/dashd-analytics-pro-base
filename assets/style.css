@@ -110,6 +110,41 @@
     color: #fff !important;
 }
 
+.dashd-date-settings {
+    max-width: 680px;
+}
+
+.dashd-date-settings h3 {
+    margin-top: 0;
+}
+
+.dashd-date-field {
+    margin: 20px 0;
+}
+
+.dashd-date-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.dashd-date-field select,
+.dashd-date-field input.regular-text {
+    width: 100%;
+    max-width: 420px;
+}
+
+.dashd-date-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px;
+    border: 1px solid var(--dashd-border);
+    border-radius: 6px;
+    background: var(--dashd-bg-light);
+    overflow-wrap: anywhere;
+}
+
 /* Общие кнопки */
 .dashd-ui-btn { 
     border-radius: 50vh; padding: 5px 15px; border: 1px solid #e2e2e2; 

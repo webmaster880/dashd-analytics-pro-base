@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.9.17
+ * Version: 11.9.18
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.9.17');
+define('DASHD_VERSION', '11.9.18');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.7');
 define('DASHD_FILE', __FILE__);
 define('DASHD_PATH', plugin_dir_path(__FILE__));
@@ -508,6 +508,7 @@ if (!function_exists('dashd_update_sensitive_setting')) {
 }
 
 require_once DASHD_PATH . 'includes/database.php';
+require_once DASHD_PATH . 'includes/date-format.php';
 require_once DASHD_PATH . 'includes/repositories/class-dashd-lead-repository.php';
 require_once DASHD_PATH . 'includes/services/class-dashd-api-read-service.php';
 require_once DASHD_PATH . 'includes/services/class-dashd-lead-notifier-service.php';
@@ -517,6 +518,7 @@ require_once DASHD_PATH . 'includes/services/class-dashd-sync-source-record-stor
 require_once DASHD_PATH . 'includes/sync-engine.php';
 require_once DASHD_PATH . 'includes/admin-ui.php';
 require_once DASHD_PATH . 'includes/admin-settings.php';
+require_once DASHD_PATH . 'includes/admin-display-settings.php';
 require_once DASHD_PATH . 'includes/integration-helpers.php';
 require_once DASHD_PATH . 'includes/admin-constructor.php';
 require_once DASHD_PATH . 'includes/analytics-api.php';

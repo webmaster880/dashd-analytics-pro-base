@@ -95,16 +95,25 @@ function dashd_admin_settings_page() {
             <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Failed to save update cache TTL. Please try again.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
 
+        <?php if ($status === 'display_saved'): ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Date format saved.', 'dashd-analytics-pro'); ?></p></div>
+        <?php elseif ($status === 'display_invalid'): ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Use a plain-text date format up to 100 bytes, without HTML, control characters, or an unfinished escape.', 'dashd-analytics-pro'); ?></p></div>
+        <?php elseif ($status === 'display_failed'): ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Failed to save date format. Please try again.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
+
         <h2 class="nav-tab-wrapper">
             <a href="?page=dashd-settings&tab=sources" class="nav-tab <?php echo $active_tab == 'sources' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Data Sources & Raw Data', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=countries" class="nav-tab <?php echo $active_tab == 'countries' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Countries Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=indicators" class="nav-tab <?php echo $active_tab == 'indicators' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Indicators Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=branding" class="nav-tab <?php echo $active_tab == 'branding' ? 'nav-tab-active' : ''; ?>" style="color:#1e87f0;"><?php esc_html_e('PDF Branding 🎨', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=leads" class="nav-tab <?php echo $active_tab == 'leads' ? 'nav-tab-active' : ''; ?>" style="color:#10b981;"><?php esc_html_e('Leads (Emails) 📩', 'dashd-analytics-pro'); ?></a>
+            <a href="?page=dashd-settings&tab=display" class="nav-tab <?php echo $active_tab == 'display' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Display', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
         </h2>
 
-        <?php if ($active_tab !== 'branding' && $active_tab !== 'leads' && $active_tab !== 'logs'): ?>
+        <?php if (!in_array($active_tab, ['branding', 'leads', 'display', 'logs'], true)): ?>
         <div class="dashd-toolbar">
             <div class="dashd-toolbar-group">
                 <p class="dashd-toolbar-title"><?php esc_html_e('Dictionaries Actions:', 'dashd-analytics-pro'); ?></p>
@@ -142,6 +151,8 @@ function dashd_admin_settings_page() {
                 dashd_render_branding_tab();
             } elseif ($active_tab === 'leads') {
                 dashd_render_leads_tab();
+            } elseif ($active_tab === 'display') {
+                dashd_render_display_tab();
             } elseif ($active_tab === 'logs') {
                 dashd_render_logs_tab();
             } else {
@@ -2576,7 +2587,7 @@ function dashd_handle_check_updates() {
 
     check_admin_referer('dashd_check_updates', 'dashd_check_updates_nonce');
 
-    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'logs'];
+    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'display', 'logs'];
     $tab = isset($_POST['tab']) ? sanitize_key((string) $_POST['tab']) : 'sources';
     if (!in_array($tab, $allowed_tabs, true)) {
         $tab = 'sources';
@@ -2611,7 +2622,7 @@ function dashd_handle_save_update_cache_ttl() {
 
     check_admin_referer('dashd_save_update_cache_ttl', 'dashd_save_update_cache_ttl_nonce');
 
-    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'logs'];
+    $allowed_tabs = ['sources', 'countries', 'indicators', 'branding', 'leads', 'display', 'logs'];
     $tab = isset($_POST['tab']) ? sanitize_key((string) $_POST['tab']) : 'sources';
     if (!in_array($tab, $allowed_tabs, true)) {
         $tab = 'sources';
