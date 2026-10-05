@@ -48,6 +48,23 @@ function dashd_ensure_required_columns() {
     }
 }
 
+function dashd_ensure_record_date_datetime() {
+    global $wpdb;
+
+    $table = "{$wpdb->prefix}dashd_data_records";
+    $column = $wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s", 'record_date'));
+    if (!$column || !isset($column->Type)) {
+        return false;
+    }
+    if (strtolower((string) $column->Type) === 'date') {
+        // MySQL preserves existing dates and fills the previously unknown time with 00:00:00.
+        $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN record_date datetime NOT NULL");
+        $column = $wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s", 'record_date'));
+    }
+
+    return $column && strtolower((string) $column->Type) === 'datetime';
+}
+
 function dashd_init_analytical_db() {
     global $wpdb;
     $charset_collate = $wpdb->get_charset_collate();
@@ -107,7 +124,7 @@ function dashd_init_analytical_db() {
         val double DEFAULT 0 NOT NULL,
         data_year int(4) NOT NULL,
         data_quarter varchar(10) NOT NULL,
-        record_date date NOT NULL,
+        record_date datetime NOT NULL,
         PRIMARY KEY  (id),
         KEY source_key (source_key),
         KEY period (data_year, data_quarter),
@@ -143,7 +160,9 @@ function dashd_init_analytical_db() {
     dbDelta($sql_snapshots);
 
     dashd_ensure_required_columns();
-    update_option('dashd_db_schema_version', dashd_get_schema_target_version());
+    if (dashd_ensure_record_date_datetime()) {
+        update_option('dashd_db_schema_version', dashd_get_schema_target_version());
+    }
 }
 
 function dashd_maybe_upgrade_db_schema() {

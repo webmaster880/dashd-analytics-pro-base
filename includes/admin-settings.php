@@ -930,6 +930,7 @@ function dashd_render_sources_tab($sources) {
             addNet: "<?php echo esc_js(__('Network error during raw data save.', 'dashd-analytics-pro')); ?>",
             addSavedInserted: "<?php echo esc_js(__('Raw data point added.', 'dashd-analytics-pro')); ?>",
             addSavedUpdated: "<?php echo esc_js(__('Raw data point updated.', 'dashd-analytics-pro')); ?>",
+            addSavedUnchanged: "<?php echo esc_js(__('Raw data point is unchanged.', 'dashd-analytics-pro')); ?>",
             deleteSelected: "<?php echo esc_js(__('Delete Selected', 'dashd-analytics-pro')); ?>",
             itemsLabel: "<?php echo esc_js(__('items', 'dashd-analytics-pro')); ?>",
             negativeReview: "<?php echo esc_js(__('Negative value: keep it for review and verify with the data owner.', 'dashd-analytics-pro')); ?>",
@@ -1285,7 +1286,7 @@ function dashd_render_sources_tab($sources) {
                             addRawValue.focus();
                         }
                         updateBulkUiState();
-                        alert(mode === 'updated' ? i18n_settings.addSavedUpdated : i18n_settings.addSavedInserted);
+                        alert(mode === 'unchanged' ? i18n_settings.addSavedUnchanged : (mode === 'updated' ? i18n_settings.addSavedUpdated : i18n_settings.addSavedInserted));
                         return;
                     }
                     alert((json && json.data && json.data.msg) ? json.data.msg : i18n_settings.addFailed);
@@ -1964,7 +1965,18 @@ function dashd_handle_update_raw_value() {
         wp_send_json_error(['msg' => __('Numeric value is out of allowed range.', 'dashd-analytics-pro')]);
     }
     
-    $updated = $wpdb->update("{$wpdb->prefix}dashd_data_records", ['val' => $val], ['id' => $id]);
+    $current_val = $wpdb->get_var($wpdb->prepare(
+        "SELECT val FROM {$wpdb->prefix}dashd_data_records WHERE id=%d",
+        $id
+    ));
+    if ($current_val === null) {
+        wp_send_json_error(['msg' => __('Raw data record not found.', 'dashd-analytics-pro')]);
+    }
+    $updated = (float) $current_val === $val ? 0 : $wpdb->update(
+        "{$wpdb->prefix}dashd_data_records",
+        ['val' => $val, 'record_date' => current_time('mysql')],
+        ['id' => $id]
+    );
     
     if ($updated !== false) {
         if (function_exists('dashd_clear_all_caches')) dashd_clear_all_caches();
@@ -2102,8 +2114,8 @@ function dashd_handle_add_raw_record() {
         wp_send_json_error(['msg' => __('Selected indicator or country does not exist.', 'dashd-analytics-pro')]);
     }
 
-    $existing_id = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}dashd_data_records
+    $existing_record = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, val FROM {$wpdb->prefix}dashd_data_records
          WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s
          LIMIT 1",
         $source_key,
@@ -2112,16 +2124,22 @@ function dashd_handle_add_raw_record() {
         $data_year,
         $data_quarter
     ));
+    $existing_id = $existing_record ? (int) $existing_record->id : 0;
 
     $result = false;
     $mode = 'inserted';
     if ($existing_id > 0) {
-        $result = $wpdb->update(
-            "{$wpdb->prefix}dashd_data_records",
-            ['val' => $val, 'record_date' => current_time('mysql')],
-            ['id' => $existing_id]
-        );
-        $mode = 'updated';
+        if ((float) $existing_record->val === $val) {
+            $result = 0;
+            $mode = 'unchanged';
+        } else {
+            $result = $wpdb->update(
+                "{$wpdb->prefix}dashd_data_records",
+                ['val' => $val, 'record_date' => current_time('mysql')],
+                ['id' => $existing_id]
+            );
+            $mode = 'updated';
+        }
     } else {
         $result = $wpdb->insert(
             "{$wpdb->prefix}dashd_data_records",
@@ -2478,7 +2496,7 @@ function dashd_handle_import_raw_data() {
     }
 
     $imported_count = 0;
-    $sync_date = current_time('Y-m-d');
+    $sync_date = current_time('mysql');
     $row_count = 0;
     $dictionary_service = class_exists('DashD_Sync_Dictionary_Service')
         ? new DashD_Sync_Dictionary_Service()
@@ -2552,18 +2570,21 @@ function dashd_handle_import_raw_data() {
             continue;
         }
 
-        $exist_id = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$wpdb->prefix}dashd_data_records WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s",
+        $existing_record = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, val FROM {$wpdb->prefix}dashd_data_records WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s",
             $source_key, $iid, $cid, $year, $quarter
         ));
 
-        if ($exist_id > 0) {
+        if ($existing_record) {
+            if ((float) $existing_record->val === $val) {
+                continue;
+            }
             $updated = $wpdb->update(
                 "{$wpdb->prefix}dashd_data_records",
                 ['val' => $val, 'record_date' => $sync_date],
-                ['id' => $exist_id]
+                ['id' => (int) $existing_record->id]
             );
-            if ($updated !== false) {
+            if ($updated > 0) {
                 $imported_count++;
             }
         } else {

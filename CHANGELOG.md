@@ -2,10 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased] - 2026-10-05
+## [11.9.21] - 2026-10-05
 
 ### Added
 - `Custom Palette` alongside preset color schemes in Constructor, Elementor, Gutenberg, and YOOtheme Pro; country colors now follow `Country Display Order` in this mode, while widgets without a palette mode retain their saved appearance.
+- A database schema migration from `DATE` to `DATETIME` for raw-data `record_date`, preserving legacy dates with unknown time set to midnight.
+
+### Fixed
+- External sync, CSV import, and manual raw-data edits now preserve each record's timestamp when `val` is unchanged; new and changed values receive WordPress-local date and time.
+- `Updated` counts only actual value changes, so unchanged syncs report `New: 0` / `Updated: 0` in logs and Telegram; calculated indicator writes are included in the totals.
+- Added a database-free source-record regression check for insert, unchanged repeat, and value update behavior.
 
 ## [Unreleased] - 2026-10-02
 

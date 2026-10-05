@@ -12,7 +12,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
         private $source_key = '';
 
         /** @var string */
-        private $sync_date = '';
+        private $sync_time = '';
 
         /** @var array<int,array<string,mixed>> */
         private $existing_rows = [];
@@ -20,11 +20,14 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
         /** @var array<string,int> */
         private $source_records_map = [];
 
-        public function __construct($source_key, $sync_date) {
+        /** @var array<string,float> */
+        private $source_record_values = [];
+
+        public function __construct($source_key, $sync_time) {
             $this->source_key = function_exists('dashd_normalize_source_key')
                 ? dashd_normalize_source_key((string) $source_key)
                 : sanitize_key((string) $source_key);
-            $this->sync_date = (string) $sync_date;
+            $this->sync_time = (string) $sync_time;
             $this->load_existing_rows();
         }
 
@@ -32,7 +35,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
             global $wpdb;
 
             $rows = $wpdb->get_results($wpdb->prepare(
-                "SELECT id, indicator_id, country_id, data_year, data_quarter
+                "SELECT id, indicator_id, country_id, data_year, data_quarter, val
                  FROM {$wpdb->prefix}dashd_data_records
                  WHERE source_key=%s",
                 $this->source_key
@@ -40,6 +43,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
 
             $this->existing_rows = is_array($rows) ? $rows : [];
             $this->source_records_map = [];
+            $this->source_record_values = [];
 
             foreach ($this->existing_rows as $row) {
                 $key = self::record_cache_key(
@@ -51,6 +55,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
                 $id = (int) ($row['id'] ?? 0);
                 if ($id > 0) {
                     $this->source_records_map[$key] = $id;
+                    $this->source_record_values[$key] = (float) $row['val'];
                 }
             }
         }
@@ -178,15 +183,19 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
 
             $key = self::record_cache_key($indicator_id, $country_id, $year, $quarter);
             if (isset($this->source_records_map[$key]) && (int) $this->source_records_map[$key] > 0) {
+                if (isset($this->source_record_values[$key]) && $this->source_record_values[$key] === $value) {
+                    return '';
+                }
                 $updated = $wpdb->update(
                     "{$wpdb->prefix}dashd_data_records",
-                    ['val' => $value, 'record_date' => $this->sync_date],
+                    ['val' => $value, 'record_date' => $this->sync_time],
                     ['id' => (int) $this->source_records_map[$key]]
                 );
                 if ($updated === false) {
                     return '';
                 }
                 if ((int) $updated > 0) {
+                    $this->source_record_values[$key] = $value;
                     return 'updated';
                 }
                 return '';
@@ -199,10 +208,11 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
                 'val' => $value,
                 'data_year' => $year,
                 'data_quarter' => $quarter,
-                'record_date' => $this->sync_date
+                'record_date' => $this->sync_time
             ]);
             if ($inserted !== false && (int) $wpdb->insert_id > 0) {
                 $this->source_records_map[$key] = (int) $wpdb->insert_id;
+                $this->source_record_values[$key] = $value;
                 return 'inserted';
             }
 

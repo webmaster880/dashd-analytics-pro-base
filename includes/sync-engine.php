@@ -31,7 +31,7 @@ if (!function_exists('dashd_sync_normalize_quarter')) {
 function dashd_sync_repository($manual = false) {
     global $wpdb;
     $sources = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}dashd_settings");
-    $sync_date = current_time('Y-m-d');
+    $sync_time = current_time('mysql');
     $log = "";
     $total_added = 0;
     $total_updated = 0;
@@ -186,7 +186,7 @@ function dashd_sync_repository($manual = false) {
         // 1. СОЗДАНИЕ СНАПШОТА (History Tracking)
         // Делаем резервную копию сырых данных ПЕРЕД синхронизацией
         // =========================================================
-        $record_store = new DashD_Sync_Source_Record_Store($source_key, $sync_date);
+        $record_store = new DashD_Sync_Source_Record_Store($source_key, $sync_time);
         $existing_count = $record_store->get_existing_count();
 
         if ($existing_count > 0) {
@@ -407,7 +407,9 @@ function dashd_sync_repository($manual = false) {
     // ГЛОБАЛЬНЫЙ РАСЧЕТ ИНДИКАТОРОВ (Машина времени)
     // Запускаем один раз после того, как все таблицы обновлены
     // =========================================================
-    dashd_process_calculated_indicators($sync_date);
+    $calculated_changes = dashd_process_calculated_indicators($sync_time);
+    $total_added += (int) ($calculated_changes['added'] ?? 0);
+    $total_updated += (int) ($calculated_changes['updated'] ?? 0);
 
     if (!empty($anomalies)) {
         $log .= "\n⚠️ Detected Anomalies (>300%):\n" . implode("\n", array_slice($anomalies, 0, 5));
@@ -433,12 +435,15 @@ function dashd_sync_repository($manual = false) {
 // ДВИЖОК РАСЧЕТНЫХ ИНДИКАТОРОВ (v5 - Time Shift & Strict Match)
 // Формат: IndID : CountryID : Offset (e.g. 5::-1Y или 5:2:-1Q)
 // =========================================================
-function dashd_process_calculated_indicators($sync_date) {
+function dashd_process_calculated_indicators($sync_time) {
     global $wpdb;
-    $sync_date_raw = (string) $sync_date;
-    $sync_date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $sync_date_raw) === 1
-        ? $sync_date_raw
-        : current_time('Y-m-d');
+    $changes = ['added' => 0, 'updated' => 0];
+    $sync_time = (string) $sync_time;
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $sync_time) === 1) {
+        $sync_time .= ' 00:00:00';
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $sync_time) !== 1) {
+        $sync_time = current_time('mysql');
+    }
 
     $max_calc_indicators = dashd_sync_limit_int(
         apply_filters('dashd_calc_max_indicators', 200),
@@ -488,7 +493,7 @@ function dashd_process_calculated_indicators($sync_date) {
          LIMIT %d",
         $max_calc_indicators
     ));
-    if (empty($calc_inds)) return;
+    if (empty($calc_inds)) return $changes;
 
     // Берем абсолютно все комбинации Год+Квартал+Страна, которые есть в БД
     $periods = $wpdb->get_results($wpdb->prepare(
@@ -499,7 +504,7 @@ function dashd_process_calculated_indicators($sync_date) {
         $max_calc_periods
     ));
     if (empty($periods)) {
-        return;
+        return $changes;
     }
 
     $period_country_map = [];
@@ -511,7 +516,7 @@ function dashd_process_calculated_indicators($sync_date) {
     }
     $period_country_ids = array_keys($period_country_map);
     if (empty($period_country_ids)) {
-        return;
+        return $changes;
     }
 
     foreach ($calc_inds as $ci) {
@@ -735,19 +740,25 @@ function dashd_process_calculated_indicators($sync_date) {
                     if (abs($existing_val - (float) $result_val) < 0.0000001) {
                         continue;
                     }
-                    $wpdb->update("{$wpdb->prefix}dashd_data_records", ['val' => $result_val, 'record_date' => $sync_date], ['id' => $existing_id]);
-                    $existing_map[$row_key]['val'] = (float) $result_val;
+                    $updated = $wpdb->update("{$wpdb->prefix}dashd_data_records", ['val' => $result_val, 'record_date' => $sync_time], ['id' => $existing_id]);
+                    if ($updated > 0) {
+                        $existing_map[$row_key]['val'] = (float) $result_val;
+                        $changes['updated']++;
+                    }
                 } else {
                     $wpdb->insert("{$wpdb->prefix}dashd_data_records", [
                         'source_key' => $t_source, 'indicator_id' => $ci->id, 'country_id' => $p->country_id,
-                        'val' => $result_val, 'data_year' => $p->data_year, 'data_quarter' => $p->data_quarter, 'record_date' => $sync_date
+                        'val' => $result_val, 'data_year' => $p->data_year, 'data_quarter' => $p->data_quarter, 'record_date' => $sync_time
                     ]);
                     $insert_id = (int) $wpdb->insert_id;
                     if ($insert_id > 0) {
                         $existing_map[$row_key] = ['id' => $insert_id, 'val' => (float) $result_val];
+                        $changes['added']++;
                     }
                 }
             }
         }
     }
+
+    return $changes;
 }
