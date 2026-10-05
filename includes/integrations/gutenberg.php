@@ -20,6 +20,7 @@ add_action('init', function() {
             'show_scale_toggle' => ['type' => 'string', 'default' => 'true'],
             'show_periods' => ['type' => 'string', 'default' => 'true'],
             'show_data_warnings' => ['type' => 'string', 'default' => 'true'],
+            'show_negative_values' => ['type' => 'string', 'default' => 'true'],
             'country_order' => ['type' => 'string', 'default' => ''],
             'period_start' => ['type' => 'string', 'default' => ''],
             'period_end' => ['type' => 'string', 'default' => ''],

@@ -135,6 +135,10 @@ function dashd_admin_constructor_page() {
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
                     <label style="font-weight: 600; display: block; margin-bottom: 8px;"><?php esc_html_e('Data Quality Warnings:', 'dashd-analytics-pro'); ?></label>
+                    <label style="display:block; margin-bottom:6px;">
+                        <input type="checkbox" id="c_show_negative_values" checked>
+                        <?php esc_html_e('Show negative values in charts and tables', 'dashd-analytics-pro'); ?>
+                    </label>
                     <label style="display:block; margin-bottom:0;">
                         <input type="checkbox" id="c_show_data_warnings" checked>
                         <?php esc_html_e('Show warnings for negative or incorrect values', 'dashd-analytics-pro'); ?>
@@ -220,6 +224,7 @@ function dashd_admin_constructor_page() {
             const showScaleToggle = document.getElementById('c_show_scale_toggle').checked ? 'true' : 'false';
             const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
             const showDataWarnings = document.getElementById('c_show_data_warnings').checked ? 'true' : 'false';
+            const showNegativeValues = document.getElementById('c_show_negative_values').checked ? 'true' : 'false';
             const barOrientation = document.getElementById('c_bar_orientation').value;
             const barStacked = document.getElementById('c_bar_stacked').value;
             const periodStart = document.getElementById('c_period_start').value;
@@ -232,6 +237,7 @@ function dashd_admin_constructor_page() {
             shortcode += ` show_scale_toggle="${showScaleToggle}"`;
             shortcode += ` show_periods="${showPeriods}"`;
             shortcode += ` show_data_warnings="${showDataWarnings}"`;
+            shortcode += ` show_negative_values="${showNegativeValues}"`;
             shortcode += ` bar_orientation="${barOrientation}"`;
             shortcode += ` bar_stacked="${barStacked}"`;
             if (periodStart !== '') {
@@ -285,7 +291,7 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_show_negative_values', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = upSC;

@@ -216,6 +216,7 @@ function dashd_render_front_widget($atts) {
         'show_scale_toggle' => 'true',
         'show_periods' => 'true',
         'show_data_warnings' => 'true',
+        'show_negative_values' => 'true',
         'bar_orientation' => 'horizontal',
         'bar_stacked' => 'true',
         'country_order' => '',
@@ -299,6 +300,7 @@ function dashd_render_front_widget($atts) {
     $show_scale_toggle = $bool_from_atts($a['show_scale_toggle'] ?? 'true', true);
     $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
     $show_data_warnings = $bool_from_atts($a['show_data_warnings'] ?? 'true', true);
+    $show_negative_values = $bool_from_atts($a['show_negative_values'] ?? 'true', true);
     $bar_orientation = strtolower(trim((string) ($a['bar_orientation'] ?? 'horizontal')));
     if (!in_array($bar_orientation, ['horizontal', 'vertical'], true)) {
         $bar_orientation = 'horizontal';
@@ -390,6 +392,7 @@ function dashd_render_front_widget($atts) {
         'showScaleToggle' => $show_scale_toggle,
         'showPeriods' => $show_periods,
         'showDataWarnings' => $show_data_warnings,
+        'showNegativeValues' => $show_negative_values,
         'showBarControlsUI' => $show_bar_controls_ui,
         'barOrientation' => $bar_orientation,
         'barStacked' => $bar_stacked,
@@ -705,6 +708,29 @@ function dashd_render_front_widget($atts) {
 
         const DATA_QUALITY_WARNING_COLOR = '#f97316';
         const dataWarningsEnabled = config.showDataWarnings !== false;
+        const showNegativeValues = config.showNegativeValues !== false;
+        const displayNumber = (value) => {
+            if (value === null || value === undefined || value === '') return null;
+            const number = Number(value);
+            return Number.isFinite(number) && (!showNegativeValues && number < 0) ? null : value;
+        };
+        const filterNegativeValues = (data) => {
+            if (showNegativeValues || !data || !data.indicators) return data;
+            Object.values(data.indicators).forEach((series) => {
+                Object.keys(series || {}).forEach((country) => {
+                    const values = series[country];
+                    series[country] = Array.isArray(values)
+                        ? values.map(displayNumber)
+                        : displayNumber(values);
+                });
+            });
+            Object.values(data.previous || {}).forEach((series) => {
+                Object.keys(series || {}).forEach((country) => {
+                    series[country] = displayNumber(series[country]);
+                });
+            });
+            return data;
+        };
         const hasNegativeValues = (data) => {
             if (!data || !Array.isArray(data.datasets)) return false;
             return data.datasets.some((dataset) => {
@@ -1298,7 +1324,8 @@ function dashd_render_front_widget($atts) {
                     if (json.data && Array.isArray(json.data.countries)) {
                         json.data.countries = sortCountriesByPreference(json.data.countries);
                     }
-                    if (viewMode === 'line' || isSingleIndicatorYearMode()) trendData = json.data; else rawData = json.data;
+                    const displayData = filterNegativeValues(json.data);
+                    if (viewMode === 'line' || isSingleIndicatorYearMode()) trendData = displayData; else rawData = displayData;
                     if (json.data.year) curY = json.data.year;
                     if (json.data.quarter) curQ = json.data.quarter;
                     syncPeriodButtons();
@@ -1317,11 +1344,13 @@ function dashd_render_front_widget($atts) {
         };
 
         const getLineDataForCountry = (indName) => {
-            let historyData = new Array(trendData.periods.length).fill(0);
+            let historyData = new Array(trendData.periods.length).fill(null);
             if (curCty === i18n.allCountries) {
                 trendData.countries.forEach(c => {
                     if (trendData.indicators[indName][c]) {
-                        trendData.indicators[indName][c].forEach((val, idx) => { historyData[idx] += val; });
+                        trendData.indicators[indName][c].forEach((val, idx) => {
+                            if (val !== null && val !== undefined) historyData[idx] = (historyData[idx] ?? 0) + Number(val);
+                        });
                     }
                 });
             } else {
@@ -1366,6 +1395,7 @@ function dashd_render_front_widget($atts) {
                     ? trendData.indicators[indicatorName][country]
                     : [];
                 valuesByCountry[country] = periodKeys.map((periodIdx) => {
+                    if (series[periodIdx] === null) return null;
                     const raw = Number(series[periodIdx] ?? 0);
                     return Number.isFinite(raw) ? raw : 0;
                 });
@@ -1541,11 +1571,11 @@ function dashd_render_front_widget($atts) {
 
                     const stackedValuesByCountry = {};
                     rawData.countries.forEach((countryName) => {
-                        stackedValuesByCountry[countryName] = inds.map((ind) => Number(rawData.indicators[ind]?.[countryName] || 0));
+                        stackedValuesByCountry[countryName] = inds.map((ind) => rawData.indicators[ind]?.[countryName] === null ? null : Number(rawData.indicators[ind]?.[countryName] || 0));
                     });
 
                     rawData.countries.forEach((c, i) => {
-                        const vals = inds.map(ind => rawData.indicators[ind][c] || 0);
+                        const vals = inds.map(ind => rawData.indicators[ind][c] === null ? null : (rawData.indicators[ind][c] || 0));
                         d.datasets.push({
                             label: c,
                             data: vals,
@@ -1558,7 +1588,7 @@ function dashd_render_front_widget($atts) {
                     const isGroupedCountryBars = (viewMode === 'bar' && curCty === i18n.allCountries);
                     if (isGroupedCountryBars) {
                         rawData.countries.forEach((country, countryIdx) => {
-                            const vals = inds.map((ind) => Number(rawData.indicators[ind]?.[country] || 0));
+                            const vals = inds.map((ind) => rawData.indicators[ind]?.[country] === null ? null : Number(rawData.indicators[ind]?.[country] || 0));
                             vals.forEach((v) => {
                                 if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
                             });
@@ -1576,7 +1606,7 @@ function dashd_render_front_widget($atts) {
                         const vals = inds.map((i) => {
                             const v = curCty === i18n.allCountries
                                 ? Object.values(rawData.indicators[i]).reduce((a, b) => a + b, 0)
-                                : (rawData.indicators[i][curCty] || 0);
+                                : (rawData.indicators[i][curCty] === null ? null : (rawData.indicators[i][curCty] || 0));
                             if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
                             return v;
                         });
@@ -1776,7 +1806,7 @@ function dashd_render_front_widget($atts) {
                         let qoqHtml = '';
                         if (idx > 0) {
                             let prev = historyData[idx-1];
-                            if (prev !== 0) {
+                            if (v !== null && prev !== null && prev !== 0) {
                                 let pct = ((v - prev) / Math.abs(prev)) * 100;
                                 let color = pct >= 0 ? '#10b981' : '#ef4444';
                                 let arrow = pct >= 0 ? '&#9650;' : '&#9660;';
@@ -1798,10 +1828,14 @@ function dashd_render_front_widget($atts) {
                 setTimeout(() => {
                     root.querySelectorAll('.dashd-sparkline').forEach(canvas => {
                         const ind = canvas.dataset.ind; const color = canvas.dataset.color; const hData = getLineDataForCountry(ind);
+                        const numericValues = hData.filter((value) => value !== null && Number.isFinite(Number(value))).map(Number);
+                        const sparklineScale = numericValues.length
+                            ? { display: false, min: Math.min(...numericValues) * 0.9, max: Math.max(...numericValues) * 1.1 }
+                            : { display: false };
                         const spChart = new Chart(canvas.getContext('2d'), {
                             type: 'line',
                             data: { labels: trendData.periods, datasets: [{ data: hData, borderColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0, fill: true, backgroundColor: (color.length === 7) ? color + '33' : color }] },
-                            options: { responsive: false, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false, min: Math.min(...hData) * 0.9, max: Math.max(...hData) * 1.1 } }, animation: false }
+                            options: { responsive: false, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: sparklineScale }, animation: false }
                         });
                         sparklines.push(spChart);
                     });
@@ -1819,8 +1853,9 @@ function dashd_render_front_widget($atts) {
                 tbody.innerHTML = annual.yearsAsc.map((year, rowIdx) => {
                     let rowSum = 0;
                     const cells = annual.countries.map((country) => {
-                        const val = Number(annual.valuesByCountry[country]?.[rowIdx] || 0);
-                        rowSum += val;
+                        const raw = annual.valuesByCountry[country]?.[rowIdx];
+                        const val = raw === null ? null : Number(raw || 0);
+                        if (val !== null) rowSum += val;
 	                        return `<td>${renderValueWithWarning(val)}</td>`;
                     }).join('');
                     const periodLabel = (annual.yearLabels && annual.yearLabels[rowIdx]) ? annual.yearLabels[rowIdx] : String(year);
@@ -1831,12 +1866,14 @@ function dashd_render_front_widget($atts) {
                 tbody.innerHTML = Object.keys(rawData.indicators).map(ind => {
                     let rowSum = 0;
                     const cells = rawData.countries.map(c => {
-                        const cur = rawData.indicators[ind][c] || 0; rowSum += cur;
+                        const raw = rawData.indicators[ind][c];
+                        const cur = raw === null ? null : (raw || 0);
+                        if (cur !== null) rowSum += cur;
 
                         let yoyHtml = '';
                         if (rawData.previous && rawData.previous[ind] && rawData.previous[ind][c] !== undefined) {
                             const prev = rawData.previous[ind][c];
-                            if (prev !== 0) {
+                            if (cur !== null && prev !== null && prev !== 0) {
                                 const diff = ((cur - prev) / Math.abs(prev)) * 100;
                                 const color = diff >= 0 ? '#10b981' : '#ef4444';
                                 const arrow = diff >= 0 ? '▲' : '▼';

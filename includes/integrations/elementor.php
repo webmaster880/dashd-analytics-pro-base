@@ -213,6 +213,14 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'description' => __('Show warnings for negative or incorrect values on charts and tables.', 'dashd-analytics-pro'),
                 ]);
 
+                $this->add_control('show_negative_values', [
+                    'label' => __('Show Negative Values', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SWITCHER,
+                    'return_value' => 'true',
+                    'default' => 'true',
+                    'description' => __('Include negative values in charts, tables, and exports.', 'dashd-analytics-pro'),
+                ]);
+
                 $this->add_control('country_order', [
                     'label' => __('Country Display Order', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::TEXT,
@@ -283,6 +291,7 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 $show_scale_toggle = (!empty($settings['show_scale_toggle']) && (string) $settings['show_scale_toggle'] === 'true') ? 'true' : 'false';
                 $show_periods = (!empty($settings['show_periods']) && (string) $settings['show_periods'] === 'true') ? 'true' : 'false';
                 $show_data_warnings = (!array_key_exists('show_data_warnings', $settings) || (string) $settings['show_data_warnings'] === 'true') ? 'true' : 'false';
+                $show_negative_values = (!array_key_exists('show_negative_values', $settings) || (string) $settings['show_negative_values'] === 'true') ? 'true' : 'false';
 
                 $colors = self::sanitize_palette((string) ($settings['colors'] ?? ''));
                 if ($colors === '') {
@@ -293,7 +302,7 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
                 $shortcode .= sprintf(
-                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" country_order="%s" colors="%s"]',
+                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" country_order="%s" colors="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
@@ -306,6 +315,7 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     esc_attr($show_scale_toggle),
                     esc_attr($show_periods),
                     esc_attr($show_data_warnings),
+                    esc_attr($show_negative_values),
                     esc_attr($country_order),
                     esc_attr($colors)
                 );

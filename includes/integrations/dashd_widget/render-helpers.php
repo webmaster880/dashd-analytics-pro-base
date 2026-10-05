@@ -255,6 +255,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $show_scale_toggle = dashd_yootheme_normalize_toggle($props['show_scale_toggle'] ?? true, true);
         $show_periods = dashd_yootheme_normalize_toggle($props['show_periods'] ?? true, true);
         $show_data_warnings = dashd_yootheme_normalize_toggle($props['show_data_warnings'] ?? true, true);
+        $show_negative_values = dashd_yootheme_normalize_toggle($props['show_negative_values'] ?? true, true);
         $bar_orientation = dashd_yootheme_normalize_bar_orientation($props['bar_orientation'] ?? 'horizontal');
         $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
         $period_start = dashd_yootheme_normalize_period_bound($props['period_start'] ?? '');
@@ -278,6 +279,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'show_scale_toggle' => $show_scale_toggle,
             'show_periods' => $show_periods,
             'show_data_warnings' => $show_data_warnings,
+            'show_negative_values' => $show_negative_values,
             'bar_orientation' => $bar_orientation,
             'bar_stacked' => $bar_stacked,
             'period_start' => $period_start,
@@ -296,7 +298,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -306,6 +308,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['show_scale_toggle'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_periods'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['show_data_warnings'] ?? 'true'),
+            dashd_yootheme_escape_attr($normalized['show_negative_values'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['bar_orientation'] ?? 'horizontal'),
             dashd_yootheme_escape_attr($normalized['bar_stacked'] ?? 'true'),
             dashd_yootheme_escape_attr($normalized['period_start'] ?? ''),

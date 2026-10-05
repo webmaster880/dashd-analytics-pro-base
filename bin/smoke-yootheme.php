@@ -77,6 +77,12 @@ if (strpos($shortcode, 'mode="bar"') === false || strpos($shortcode, 'scale="lin
     fail('Shortcode does not contain normalized mode/scale.');
 }
 
+$hiddenNegative = dashd_yootheme_normalize_widget_props(['show_negative_values' => false]);
+if (($hiddenNegative['show_negative_values'] ?? '') !== 'false'
+    || strpos(dashd_yootheme_build_shortcode($hiddenNegative), 'show_negative_values="false"') === false) {
+    fail('Negative value visibility is not passed to the shortcode.');
+}
+
 $template = file_get_contents($templateFile);
 $content = file_get_contents($contentFile);
 if (!is_string($template) || !is_string($content)) {

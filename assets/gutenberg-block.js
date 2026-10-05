@@ -116,6 +116,12 @@
                             onChange: (val) => setAttributes({ show_periods: val ? 'true' : 'false' })
                         }),
                         el(ToggleControl, {
+                            label: 'Show Negative Values',
+                            checked: attributes.show_negative_values !== 'false',
+                            help: 'Include negative values in charts, tables, and exports.',
+                            onChange: (val) => setAttributes({ show_negative_values: val ? 'true' : 'false' })
+                        }),
+                        el(ToggleControl, {
                             label: 'Show Data Quality Warnings',
                             checked: attributes.show_data_warnings !== 'false',
                             help: 'Show warnings for negative or incorrect values.',

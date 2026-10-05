@@ -22,6 +22,7 @@
         "show_scale_toggle": true,
         "show_periods": true,
         "show_data_warnings": true,
+        "show_negative_values": true,
         "country_order": "",
         "period_start": "",
         "period_end": "",

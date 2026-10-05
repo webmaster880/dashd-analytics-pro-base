@@ -5,10 +5,17 @@ All notable changes to this project are documented in this file.
 ## [Unreleased] - 2026-10-02
 
 ### Added
+- Per-widget `show_negative_values` switch in Constructor, Elementor, Gutenberg, and YOOtheme Pro; hidden negative values are omitted from charts, tables, totals, and exports without changing stored raw data.
 - `Settings → Display`: Last updated date format presets, a custom WordPress/PHP template, and a live server-rendered preview.
 - A shared date formatter for chart/API update timestamps and PDF reports, with WordPress timezone and page-language support when the language pack is installed.
 - Empty format uses WordPress date/time settings; the existing `d.m.Y H:i` format remains the default.
 - Date-format smoke checks using WordPress core cover presets, timezone offsets, locale restoration, missing dates, and template validation.
+- Verified manual update-check results: installed/latest DashD versions, available update count, and provider error messages stored per administrator.
+- A WP-CLI helper for running only due plugin update checks, including Multisite subsite callback registration, plus updater regression checks.
+
+### Fixed
+- `Check updates now` no longer reports success after failed or skipped WordPress.org/GitHub checks; manual checks bypass provider caches without deleting the shared plugin update transient.
+- Multisite subsite cron now checks DashD GitHub releases even when WordPress does not register its own `wp_update_plugins` callback; existing provider TTL and other plugins' update entries are preserved.
 
 ### Changed
 - Widget data cache keys include the effective date format, locale, and timezone; saving the setting invalidates plugin caches.

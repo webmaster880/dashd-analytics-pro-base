@@ -80,10 +80,21 @@ function dashd_admin_settings_page() {
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Sync logs cleared.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
         <?php if ($status === 'updates_checked'): ?>
-            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Update check completed. Refresh Plugins/Updates page to see latest status.', 'dashd-analytics-pro'); ?></p></div>
+            <?php $check_result = get_transient('dashd_update_check_' . get_current_user_id()); ?>
+            <?php if (is_array($check_result) && isset($check_result['installed'], $check_result['latest'])): ?>
+                <div class="notice notice-success is-dismissible"><p>
+                    <?php printf(esc_html__('Checked WordPress.org and GitHub. DashD installed: %1$s; latest release: %2$s.', 'dashd-analytics-pro'), esc_html($check_result['installed']), esc_html($check_result['latest'])); ?>
+                    <strong><?php echo esc_html(!empty($check_result['dashd_update_available']) ? __('A DashD update is available.', 'dashd-analytics-pro') : __('No newer DashD release is available.', 'dashd-analytics-pro')); ?></strong>
+                    <?php printf(esc_html__('Available plugin updates: %d.', 'dashd-analytics-pro'), (int) $check_result['updates_count']); ?>
+                    <a href="<?php echo esc_url(is_multisite() ? network_admin_url('plugins.php') : admin_url('plugins.php')); ?>"><?php esc_html_e('View plugins', 'dashd-analytics-pro'); ?></a>
+                </p></div>
+            <?php else: ?>
+                <div class="notice notice-info is-dismissible"><p><?php esc_html_e('Check result expired. Run Check updates now again to see current versions.', 'dashd-analytics-pro'); ?></p></div>
+            <?php endif; ?>
         <?php endif; ?>
         <?php if ($status === 'updates_check_failed'): ?>
-            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Update check failed. Verify GitHub repository settings/token and try again.', 'dashd-analytics-pro'); ?></p></div>
+            <?php $check_result = get_transient('dashd_update_check_' . get_current_user_id()); ?>
+            <div class="notice notice-error is-dismissible"><p><?php echo esc_html(is_array($check_result) && !empty($check_result['error']) ? $check_result['error'] : __('Update check failed. Run the check again for details.', 'dashd-analytics-pro')); ?></p></div>
         <?php endif; ?>
         <?php if ($status === 'updates_ttl_saved'): ?>
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Update cache TTL saved. New value is active.', 'dashd-analytics-pro'); ?></p></div>
@@ -2594,14 +2605,21 @@ function dashd_handle_check_updates() {
     }
 
     $status = 'updates_checked';
+    $check_result = [];
     if (function_exists('dashd_github_updater_check_now')) {
         $result = dashd_github_updater_check_now();
         if (is_wp_error($result)) {
             $status = 'updates_check_failed';
+            $check_result = ['error' => $result->get_error_message()];
+        } elseif (is_array($result)) {
+            $check_result = $result;
         }
     } else {
         $status = 'updates_check_failed';
+        $check_result = ['error' => __('Update checker is unavailable.', 'dashd-analytics-pro')];
     }
+
+    set_transient('dashd_update_check_' . get_current_user_id(), $check_result, 10 * MINUTE_IN_SECONDS);
 
     wp_redirect(admin_url('admin.php?page=dashd-settings&tab=' . rawurlencode($tab) . '&status=' . rawurlencode($status)));
     exit;

@@ -156,6 +156,13 @@ return [
             'description' => 'Controls frontend warning badges, warning borders, tooltips, and fallback notices for problematic data.',
             'default' => true,
         ],
+        'show_negative_values' => [
+            'label' => 'Show Negative Values',
+            'type' => 'checkbox',
+            'text' => 'Include negative values in charts and tables',
+            'description' => 'When disabled, negative values are omitted from charts, tables, and exports.',
+            'default' => true,
+        ],
         'country_order' => [
             'label' => 'Country Display Order',
             'type' => 'text',
@@ -355,6 +362,7 @@ return [
                         'show_scale_toggle',
                         'show_periods',
                         'show_data_warnings',
+                        'show_negative_values',
                         'country_order',
                         'colors',
                         [

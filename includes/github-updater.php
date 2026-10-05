@@ -53,6 +53,26 @@ if (!class_exists('DashD_Github_Updater')) {
             add_filter('plugins_api', [$this, 'filter_plugins_api'], 20, 3);
             add_filter('http_request_args', [$this, 'filter_http_request_args'], 10, 2);
             add_action('upgrader_process_complete', [$this, 'action_upgrader_process_complete'], 10, 2);
+            add_action('wp_update_plugins', [$this, 'action_scheduled_update_check'], 20);
+        }
+
+        /** Check GitHub even when core omits its update callback on a Multisite subsite. */
+        public function action_scheduled_update_check() {
+            $release = $this->get_release_data();
+            if (is_wp_error($release) || empty($release['version'])) {
+                return;
+            }
+
+            $transient = get_site_transient('update_plugins');
+            if (!is_object($transient)) {
+                $transient = new stdClass();
+            }
+            if (!isset($transient->checked) || !is_array($transient->checked)) {
+                $transient->checked = [];
+            }
+            $transient->checked[$this->plugin_basename] = $this->current_version;
+            // Preserve core's last_checked time: this request checked only GitHub.
+            set_site_transient('update_plugins', $this->filter_update_transient($transient));
         }
 
         /**
@@ -255,6 +275,12 @@ if (!class_exists('DashD_Github_Updater')) {
             return $data;
         }
 
+        /** Fetch a release without the 12-24 hour cache for an explicit check. */
+        public function check_release_now() {
+            delete_transient($this->release_cache_key());
+            return $this->get_release_data();
+        }
+
         /**
          * @param array<string,mixed> $payload
          * @param string              $version
@@ -419,9 +445,9 @@ if (!function_exists('dashd_github_updater_cache_key')) {
 
 if (!function_exists('dashd_github_updater_check_now')) {
     /**
-     * Force update check for plugins table and clear updater caches.
+     * Force checks of both providers and return a verified result for the admin UI.
      *
-     * @return true|WP_Error
+     * @return array<string,mixed>|WP_Error
      */
     function dashd_github_updater_check_now() {
         $repo = defined('DASHD_GITHUB_REPO') ? (string) DASHD_GITHUB_REPO : '';
@@ -436,21 +462,75 @@ if (!function_exists('dashd_github_updater_check_now')) {
             $branch = 'main';
         }
 
-        delete_transient(dashd_github_updater_cache_key($repo, $branch));
-        delete_site_transient('update_plugins');
+        if (!(bool) apply_filters('dashd_github_updater_enabled', true, $repo)) {
+            return new WP_Error('dashd_github_disabled', __('GitHub update checks are disabled by a filter.', 'dashd-analytics-pro'));
+        }
+
+        $token = defined('DASHD_GITHUB_TOKEN') ? (string) DASHD_GITHUB_TOKEN : '';
+        $token = (string) apply_filters('dashd_github_token', $token);
+        $updater = new DashD_Github_Updater(DASHD_FILE, DASHD_VERSION, $repo, $branch, $token);
+        $release = $updater->check_release_now();
+
         if (function_exists('wp_clean_plugins_cache')) {
-            wp_clean_plugins_cache(true);
+            wp_clean_plugins_cache(false);
         }
 
         if (!function_exists('wp_update_plugins')) {
             require_once ABSPATH . 'wp-includes/update.php';
         }
-        if (function_exists('wp_update_plugins')) {
-            wp_update_plugins();
-            return true;
+        if (!function_exists('wp_update_plugins')) {
+            return new WP_Error('dashd_github_update_unavailable', __('Unable to run WordPress update checker.', 'dashd-analytics-pro'));
         }
 
-        return new WP_Error('dashd_github_update_unavailable', 'Unable to run WordPress update checker.');
+        $core_result = null;
+        $observe = static function ($response, $context, $class, $args, $url) use (&$core_result) {
+            if ($context !== 'response' || wp_parse_url($url, PHP_URL_HOST) !== 'api.wordpress.org'
+                || wp_parse_url($url, PHP_URL_PATH) !== '/plugins/update-check/1.1/') {
+                return;
+            }
+            // The final attempt wins if WordPress retries a failed HTTPS request.
+            if (is_wp_error($response)) {
+                $core_result = new WP_Error('dashd_wp_update_network', sprintf(
+                    __('WordPress.org update check failed: %s', 'dashd-analytics-pro'), $response->get_error_message()
+                ));
+                return;
+            }
+            $status = (int) wp_remote_retrieve_response_code($response);
+            $body = json_decode((string) wp_remote_retrieve_body($response), true);
+            $core_result = $status === 200 && is_array($body) && isset($body['plugins'], $body['no_update'])
+                && is_array($body['plugins']) && is_array($body['no_update'])
+                ? true
+                : new WP_Error('dashd_wp_update_response', sprintf(
+                    __('WordPress.org returned an invalid update response (HTTP %d).', 'dashd-analytics-pro'), $status
+                ));
+        };
+        add_action('http_api_debug', $observe, 10, 5);
+        try {
+            // Extra stats bypass the core timeout without erasing other plugins' cached updates.
+            wp_update_plugins(['dashd_manual_check' => true]);
+        } finally {
+            remove_action('http_api_debug', $observe, 10);
+        }
+
+        if (is_wp_error($release)) {
+            return new WP_Error('dashd_github_check_failed', sprintf(
+                __('GitHub update check failed: %s', 'dashd-analytics-pro'), $release->get_error_message()
+            ));
+        }
+        if ($core_result !== true) {
+            return is_wp_error($core_result) ? $core_result : new WP_Error(
+                'dashd_wp_update_not_run', __('WordPress.org check did not run. The update result could not be confirmed.', 'dashd-analytics-pro')
+            );
+        }
+
+        $transient = get_site_transient('update_plugins');
+        return [
+            'installed' => (string) DASHD_VERSION,
+            'latest' => (string) $release['version'],
+            'dashd_update_available' => version_compare((string) $release['version'], DASHD_VERSION, '>'),
+            'updates_count' => count((array) ($transient->response ?? [])),
+            'checked_at' => time(),
+        ];
     }
 }
 
