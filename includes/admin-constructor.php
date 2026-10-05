@@ -149,20 +149,20 @@ function dashd_admin_constructor_page() {
                 </div>
 
                 <div class="uk-margin" style="margin-top:20px; padding:15px; background:#f6f7f7; border-radius:8px; border:1px solid #e5e5e5;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Custom Color Palette:', 'dashd-analytics-pro'); ?></label>
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Color Palette:', 'dashd-analytics-pro'); ?></label>
                     
                     <select id="c_presets" class="uk-select" style="width: 100%; margin-bottom: 10px;">
-                        <option value="">-- <?php esc_html_e('Apply Preset', 'dashd-analytics-pro'); ?> --</option>
-                        <?php foreach($palettes as $p): ?>
-                            <option value="<?php echo esc_attr(implode(',', (array) ($p['colors'] ?? []))); ?>"><?php echo esc_html((string) ($p['label'] ?? '')); ?></option>
+                        <?php foreach($palettes as $key => $p): ?>
+                            <option value="<?php echo esc_attr((string) $key); ?>" data-colors="<?php echo esc_attr(implode(',', (array) ($p['colors'] ?? []))); ?>"><?php echo esc_html((string) ($p['label'] ?? '')); ?></option>
                         <?php endforeach; ?>
+                        <option value="custom"><?php esc_html_e('Custom Palette', 'dashd-analytics-pro'); ?></option>
                     </select>
 
-                    <div id="color_pickers" style="display:flex; justify-content:space-between; gap:5px; margin-top:10px;">
+                    <div id="color_pickers" style="display:none; justify-content:space-between; gap:5px; margin-top:10px;">
                         <?php for($i=1; $i<=5; $i++): ?>
                             <div style="text-align:center;">
                                 <input type="color" id="clr_<?php echo (int) $i; ?>" class="color-dot" value="<?php echo esc_attr($default_palette[$i - 1] ?? '#336DFF'); ?>" style="width:45px; height:45px; border:none; cursor:pointer; background:none;">
-                                <div style="font-size:9px; color:#646970; margin-top:4px;">#<?php echo (int) $i; ?></div>
+                                <div class="dashd-color-country-label" style="font-size:11px; color:#646970; margin-top:4px; overflow-wrap:anywhere;">#<?php echo (int) $i; ?></div>
                             </div>
                         <?php endfor; ?>
                     </div>
@@ -190,17 +190,20 @@ function dashd_admin_constructor_page() {
         const previewNonce = "<?php echo esc_js(wp_create_nonce('dashd_render_preview')); ?>";
 
         function getColorsString() {
+            const preset = document.getElementById('c_presets');
+            if (preset.value !== 'custom') return preset.selectedOptions[0]?.dataset.colors || '';
             let clrs = [];
             for(let i=1; i<=5; i++) { clrs.push(document.getElementById('clr_'+i).value); }
             return clrs.join(',');
         }
 
-        function applyPreset(csv) {
-            if(!csv) return;
-            const colors = csv.split(',');
-            colors.forEach((c, idx) => {
-                const el = document.getElementById('clr_' + (idx + 1));
-                if(el) el.value = c;
+        function syncPaletteControls() {
+            const custom = document.getElementById('c_presets').value === 'custom';
+            document.getElementById('color_pickers').style.display = custom ? 'flex' : 'none';
+            const countries = String(document.getElementById('c_country_order').value || '')
+                .split(',').map((name) => name.trim()).filter(Boolean);
+            document.querySelectorAll('#color_pickers .dashd-color-country-label').forEach((label, index) => {
+                label.textContent = countries[index] || `#${index + 1}`;
             });
             upSC();
         }
@@ -220,6 +223,7 @@ function dashd_admin_constructor_page() {
             const scale = document.getElementById('c_scale').value;
             const gated = document.getElementById('c_gated').value;
             const colors = getColorsString();
+            const paletteMode = document.getElementById('c_presets').value === 'custom' ? 'custom' : 'preset';
             const showViewToggle = document.getElementById('c_show_view_toggle').checked ? 'true' : 'false';
             const showScaleToggle = document.getElementById('c_show_scale_toggle').checked ? 'true' : 'false';
             const showPeriods = document.getElementById('c_show_periods').checked ? 'true' : 'false';
@@ -231,7 +235,7 @@ function dashd_admin_constructor_page() {
             const periodEnd = document.getElementById('c_period_end').value;
             const countryOrder = String(document.getElementById('c_country_order').value || '').trim().replace(/"/g, "'");
             
-            let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}"`;
+            let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}" palette_mode="${paletteMode}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
             shortcode += ` show_view_toggle="${showViewToggle}"`;
             shortcode += ` show_scale_toggle="${showScaleToggle}"`;
@@ -290,15 +294,15 @@ function dashd_admin_constructor_page() {
             loadPrev();
         }
 
-        document.getElementById('c_presets').onchange = (e) => applyPreset(e.target.value);
+        document.getElementById('c_presets').onchange = syncPaletteControls;
         ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_show_negative_values', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.onchange = upSC;
+            el.onchange = id === 'c_country_order' ? syncPaletteControls : upSC;
         });
         for(let i=1; i<=5; i++) { document.getElementById('clr_'+i).oninput = upSC; }
 
-        window.addEventListener('load', upSC);
+        window.addEventListener('load', syncPaletteControls);
     </script>
     <style>
         .color-dot::-webkit-color-swatch-wrapper { padding: 0; }

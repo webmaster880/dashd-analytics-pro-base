@@ -169,10 +169,10 @@ return [
             'description' => 'Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).',
             'source' => true,
         ],
-        'colors' => [
+        'palette_mode' => [
             'label' => 'Color Palette',
             'type' => 'select',
-            'options' => $color_presets,
+            'options' => array_merge(['Saved palette (existing elements)' => ''], $color_presets, ['Custom Palette' => 'custom']),
         ],
         'custom_color_1' => [
             'label' => '#1',
@@ -364,13 +364,14 @@ return [
                         'show_data_warnings',
                         'show_negative_values',
                         'country_order',
-                        'colors',
+                        'palette_mode',
                         [
                             'label' => 'Custom Color Palette',
                             'name' => '_custom_palette_grid',
-                            'description' => 'Optional. Pick one or more custom colors. If at least one color is set, it overrides the preset palette.',
+                            'description' => 'Colors follow Country Display Order: #1 is the first country, #2 the second, and so on.',
                             'type' => 'grid',
                             'width' => '1-5',
+                            'show' => 'palette_mode == \'custom\'',
                             'fields' => ['custom_color_1', 'custom_color_2', 'custom_color_3', 'custom_color_4', 'custom_color_5'],
                         ],
                     ],

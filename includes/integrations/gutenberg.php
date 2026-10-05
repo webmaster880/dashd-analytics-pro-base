@@ -7,7 +7,26 @@ if (!defined('ABSPATH')) exit;
 
 add_action('init', function() {
     register_block_type('dashd/analytics-widget', [
-        'render_callback' => 'dashd_render_front_widget',
+        'render_callback' => static function($attributes) {
+            $presets = [
+                'dashd_default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7',
+                'professional_blue' => '#1E87F0, #3E95CD, #7EBAE6, #A5D2F3, #58595B',
+                'emerald_nature' => '#10B981, #34D399, #6EE7B7, #A7F3D0, #064E3B',
+                'sunset_warmth' => '#F59E0B, #FBBF24, #FCD34D, #FDE68A, #78350F',
+                'vibrant_mix' => '#EC4899, #8B5CF6, #3B82F6, #10B981, #F59E0B',
+            ];
+            $selection = (string) ($attributes['palette_mode'] ?? 'legacy');
+            if (isset($presets[$selection])) {
+                $attributes['colors'] = $presets[$selection];
+                $attributes['palette_mode'] = 'preset';
+            } elseif ($selection === 'custom') {
+                $custom_colors = (string) ($attributes['custom_colors'] ?? '');
+                $attributes['colors'] = $custom_colors !== '' ? $custom_colors : (string) ($attributes['colors'] ?? '');
+            } else {
+                $attributes['palette_mode'] = 'legacy';
+            }
+            return dashd_render_front_widget($attributes);
+        },
         'attributes' => [
             'table'    => ['type' => 'string', 'default' => ''],
             'indicators' => ['type' => 'array', 'default' => [], 'items' => ['type' => 'string']],
@@ -24,7 +43,9 @@ add_action('init', function() {
             'country_order' => ['type' => 'string', 'default' => ''],
             'period_start' => ['type' => 'string', 'default' => ''],
             'period_end' => ['type' => 'string', 'default' => ''],
-            'colors'   => ['type' => 'string', 'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7']
+            'colors'   => ['type' => 'string', 'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7'],
+            'palette_mode' => ['type' => 'string', 'default' => 'legacy'],
+            'custom_colors' => ['type' => 'string', 'default' => '']
         ]
     ]);
 });

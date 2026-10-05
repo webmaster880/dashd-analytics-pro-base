@@ -261,9 +261,18 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $period_start = dashd_yootheme_normalize_period_bound($props['period_start'] ?? '');
         $period_end = dashd_yootheme_normalize_period_bound($props['period_end'] ?? '');
 
+        $raw_palette_selection = $props['palette_mode'] ?? '';
+        $palette_selection = is_scalar($raw_palette_selection) ? trim((string) $raw_palette_selection) : '';
         $preset = dashd_yootheme_normalize_palette($props['colors'] ?? '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7');
         $custom = dashd_yootheme_extract_custom_palette($props);
-        $colors = $custom !== '' ? $custom : $preset;
+        $palette_mode = $palette_selection === 'custom' ? 'custom' : ($palette_selection === '' ? 'legacy' : 'preset');
+        if ($palette_mode === 'custom') {
+            $colors = $custom !== '' ? $custom : $preset;
+        } elseif ($palette_mode === 'preset') {
+            $colors = dashd_yootheme_normalize_palette($palette_selection);
+        } else {
+            $colors = $custom !== '' ? $custom : $preset;
+        }
         if ($colors === '') {
             $colors = '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7';
         }
@@ -286,6 +295,7 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'period_end' => $period_end,
             'country_order' => $country_order,
             'colors' => $colors,
+            'palette_mode' => $palette_mode,
         ];
     }
 }
@@ -298,7 +308,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s" palette_mode="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -314,7 +324,8 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['period_start'] ?? ''),
             dashd_yootheme_escape_attr($normalized['period_end'] ?? ''),
             dashd_yootheme_escape_attr($normalized['country_order'] ?? ''),
-            dashd_yootheme_escape_attr($normalized['colors'] ?? '')
+            dashd_yootheme_escape_attr($normalized['colors'] ?? ''),
+            dashd_yootheme_escape_attr($normalized['palette_mode'] ?? 'legacy')
         );
     }
 }

@@ -68,6 +68,29 @@ if (($normalized['table'] ?? '') === '' || str_contains(($normalized['table'] ??
 if (($normalized['colors'] ?? '') !== '#010203, #AABBCC') {
     fail('Custom picker palette normalization failed.');
 }
+if (($normalized['palette_mode'] ?? '') !== 'legacy') {
+    fail('Existing custom picker settings must remain compatible.');
+}
+
+$presetWidget = dashd_yootheme_normalize_widget_props([
+    'palette_mode' => '#03045E, #0077B6',
+    'custom_color_1' => '#FF0000',
+]);
+if (($presetWidget['colors'] ?? '') !== '#03045E, #0077B6'
+    || ($presetWidget['palette_mode'] ?? '') !== 'preset') {
+    fail('A selected preset must not be overridden by saved custom colors.');
+}
+
+$customWidget = dashd_yootheme_normalize_widget_props([
+    'palette_mode' => 'custom',
+    'country_order' => 'Ukraine, Moldova',
+    'custom_color_1' => '#112233',
+    'custom_color_2' => '#445566',
+]);
+if (($customWidget['colors'] ?? '') !== '#112233, #445566'
+    || strpos(dashd_yootheme_build_shortcode($customWidget), 'palette_mode="custom"') === false) {
+    fail('Custom country palette is not passed to the widget.');
+}
 
 $shortcode = dashd_yootheme_build_shortcode($normalized);
 if (!is_string($shortcode) || strpos($shortcode, '[dashd_widget ') !== 0) {

@@ -133,10 +133,25 @@
                             help: 'Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).',
                             onChange: (val) => setAttributes({ country_order: val })
                         }),
-                        el(TextControl, {
-                            label: 'Colors (comma separated HEX)',
-                            value: attributes.colors,
-                            onChange: (val) => setAttributes({ colors: val })
+                        el(SelectControl, {
+                            label: 'Color Palette',
+                            value: attributes.palette_mode || 'legacy',
+                            options: [
+                                { label: 'Saved Colors (Existing Blocks)', value: 'legacy' },
+                                { label: 'DashD Default', value: 'dashd_default' },
+                                { label: 'Professional Blue', value: 'professional_blue' },
+                                { label: 'Emerald Nature', value: 'emerald_nature' },
+                                { label: 'Sunset Warmth', value: 'sunset_warmth' },
+                                { label: 'Vibrant Mix', value: 'vibrant_mix' },
+                                { label: 'Custom Palette', value: 'custom' }
+                            ],
+                            onChange: (val) => setAttributes({ palette_mode: val })
+                        }),
+                        attributes.palette_mode === 'custom' && el(TextControl, {
+                            label: 'Custom Colors (HEX, in country order)',
+                            value: attributes.custom_colors || attributes.colors || '',
+                            help: 'First color belongs to the first country in Country Display Order.',
+                            onChange: (val) => setAttributes({ custom_colors: val })
                         })
                     )
                 ),

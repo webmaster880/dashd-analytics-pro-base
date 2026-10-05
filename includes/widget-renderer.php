@@ -209,6 +209,7 @@ function dashd_render_front_widget($atts) {
         'mode'   => 'bar',
         'scale'  => 'linear',
         'colors' => '#336dff,#af9be2,#3b82f6,#bee00f,#7fd3f7',
+        'palette_mode' => 'legacy',
         'weight' => '3',
         'height' => '420px',
         'gated'  => 'false',
@@ -301,6 +302,8 @@ function dashd_render_front_widget($atts) {
     $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
     $show_data_warnings = $bool_from_atts($a['show_data_warnings'] ?? 'true', true);
     $show_negative_values = $bool_from_atts($a['show_negative_values'] ?? 'true', true);
+    $palette_mode = in_array((string) $a['palette_mode'], ['legacy', 'preset', 'custom'], true)
+        ? (string) $a['palette_mode'] : 'legacy';
     $bar_orientation = strtolower(trim((string) ($a['bar_orientation'] ?? 'horizontal')));
     if (!in_array($bar_orientation, ['horizontal', 'vertical'], true)) {
         $bar_orientation = 'horizontal';
@@ -383,6 +386,7 @@ function dashd_render_front_widget($atts) {
         'indicatorSpecs' => $active_indicator_specs,
         'lang'      => $lang,
         'colors'    => $colors,
+        'paletteMode' => $palette_mode,
         'weight'    => $weight,
         'ajax'      => $ajax_url,
         'viewMode'  => $mode,
@@ -966,6 +970,12 @@ function dashd_render_front_widget($atts) {
             if (!palette.length) return '#1e87f0';
 
             const key = String(countryName ?? '').trim();
+            if (config.paletteMode === 'custom') {
+                const position = preferredCountryOrderMap.get(normalizeCountryName(key));
+                if (position !== undefined) {
+                    return (palette[position % palette.length] || '#1e87f0').trim();
+                }
+            }
             if (key === '') {
                 return (palette[Math.abs(fallbackIndex) % palette.length] || '#1e87f0').trim();
             }

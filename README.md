@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.19`
+- Stable version: `11.9.20`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -194,6 +194,7 @@ Parameters:
 - `mode` — `bar | line | donut`.
 - `scale` — `linear | logarithmic`.
 - `colors` — HEX-палитра через запятую.
+- `palette_mode` — `legacy | preset | custom`. В `custom` цвет №1 соответствует первой стране в `country_order`, цвет №2 — второй и т.д. Шорткоды без этого параметра сохраняют прежнее назначение цветов.
 - `gated` — `true | false` (email-gate для CSV/PDF).
 - `show_view_toggle` — `true | false`, показать/скрыть переключатель `Bar / Line / Donut`.
 - `show_scale_toggle` — `true | false`, показать/скрыть переключатель `Lin / Log`.
@@ -207,6 +208,15 @@ Parameters:
 - `country_order` — ручная сортировка стран через запятую.
 - `weight` — толщина линий (default: `3`).
 - `height` — высота графика (default: `420px`).
+
+В конструкторе и редакторах Elementor, Gutenberg и YOOtheme Pro выберите
+`Custom Palette`, чтобы открыть ручной ввод цветов. Укажите страны в
+`Country Display Order` в нужном порядке и задайте цвета в том же порядке.
+Например, при `country_order="Ukraine, Moldova, Georgia"` палитра
+`colors="#336DFF,#AF9BE2,#BEE00F"` назначит эти цвета Украине, Молдове и
+Грузии соответственно. Выбор пресета не меняет уже введённые ручные цвета:
+они снова применятся при возврате к `Custom Palette`. Старые виджеты без
+`palette_mode` продолжают работать с прежними сохранёнными цветами.
 
 ---
 
@@ -440,7 +450,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.19`
+Latest release: `11.9.20`
 ---
 
 ## Notes

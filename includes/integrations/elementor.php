@@ -64,6 +64,16 @@ add_action('elementor/widgets/register', function($widgets_manager) {
     if (!class_exists('DashD_Elementor_Widget')) {
         class DashD_Elementor_Widget extends \Elementor\Widget_Base {
 
+            private static function palette_presets() {
+                return [
+                    'dashd_default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7',
+                    'professional_blue' => '#1E87F0, #3E95CD, #7EBAE6, #A5D2F3, #58595B',
+                    'emerald_nature' => '#10B981, #34D399, #6EE7B7, #A7F3D0, #064E3B',
+                    'sunset_warmth' => '#F59E0B, #FBBF24, #FCD34D, #FDE68A, #78350F',
+                    'vibrant_mix' => '#EC4899, #8B5CF6, #3B82F6, #10B981, #F59E0B',
+                ];
+            }
+
             private static function sanitize_palette($raw_palette) {
                 $raw_palette = is_scalar($raw_palette) ? (string) $raw_palette : '';
                 $parts = preg_split('/\s*,\s*/', trim($raw_palette), -1, PREG_SPLIT_NO_EMPTY);
@@ -228,10 +238,27 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'description' => __('Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).', 'dashd-analytics-pro'),
                 ]);
 
+                $this->add_control('palette_mode', [
+                    'label' => __('Color Palette', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SELECT,
+                    'options' => [
+                        'legacy' => __('Saved Colors (Existing Widgets)', 'dashd-analytics-pro'),
+                        'dashd_default' => __('DashD Default', 'dashd-analytics-pro'),
+                        'professional_blue' => __('Professional Blue', 'dashd-analytics-pro'),
+                        'emerald_nature' => __('Emerald Nature', 'dashd-analytics-pro'),
+                        'sunset_warmth' => __('Sunset Warmth', 'dashd-analytics-pro'),
+                        'vibrant_mix' => __('Vibrant Mix', 'dashd-analytics-pro'),
+                        'custom' => __('Custom Palette', 'dashd-analytics-pro'),
+                    ],
+                    'default' => 'legacy',
+                ]);
+
                 $this->add_control('colors', [
-                    'label' => __('Color Palette (HEX comma separated)', 'dashd-analytics-pro'),
+                    'label' => __('Custom Palette (HEX colors in country order)', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::TEXT,
                     'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7',
+                    'condition' => ['palette_mode' => 'custom'],
+                    'description' => __('First color belongs to the first country in Country Display Order.', 'dashd-analytics-pro'),
                 ]);
 
                 $this->end_controls_section();
@@ -294,6 +321,14 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 $show_negative_values = (!array_key_exists('show_negative_values', $settings) || (string) $settings['show_negative_values'] === 'true') ? 'true' : 'false';
 
                 $colors = self::sanitize_palette((string) ($settings['colors'] ?? ''));
+                $selection = (string) ($settings['palette_mode'] ?? 'legacy');
+                $palette_mode = $selection === 'custom' ? 'custom' : ($selection === 'legacy' ? 'legacy' : 'preset');
+                $preset_colors = self::palette_presets();
+                if (isset($preset_colors[$selection])) {
+                    $colors = $preset_colors[$selection];
+                } elseif ($palette_mode === 'preset') {
+                    $palette_mode = 'legacy';
+                }
                 if ($colors === '') {
                     $colors = '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7';
                 }
@@ -302,7 +337,7 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
                 $shortcode .= sprintf(
-                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" country_order="%s" colors="%s"]',
+                    'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" country_order="%s" colors="%s" palette_mode="%s"]',
                     esc_attr($table),
                     esc_attr($mode),
                     esc_attr($scale),
@@ -317,7 +352,8 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     esc_attr($show_data_warnings),
                     esc_attr($show_negative_values),
                     esc_attr($country_order),
-                    esc_attr($colors)
+                    esc_attr($colors),
+                    esc_attr($palette_mode)
                 );
                 echo do_shortcode($shortcode);
             }

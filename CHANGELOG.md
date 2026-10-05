@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased] - 2026-10-05
+
+### Added
+- `Custom Palette` alongside preset color schemes in Constructor, Elementor, Gutenberg, and YOOtheme Pro; country colors now follow `Country Display Order` in this mode, while widgets without a palette mode retain their saved appearance.
+
 ## [Unreleased] - 2026-10-02
 
 ### Added
