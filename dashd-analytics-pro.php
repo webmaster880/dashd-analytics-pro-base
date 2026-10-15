@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.9.21
+ * Version: 11.9.22
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.9.21');
+define('DASHD_VERSION', '11.9.22');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.8');
 define('DASHD_FILE', __FILE__);
 define('DASHD_PATH', plugin_dir_path(__FILE__));
@@ -562,7 +562,8 @@ add_action('init', function() {
     wp_register_script('dashd-chart-js', DASHD_URL . 'assets/vendors/chart.min.js', [], '4.4.0', true);
     wp_register_script('dashd-html2canvas', DASHD_URL . 'assets/vendors/html2canvas.min.js', [], '1.4.1', true);
     wp_register_script('dashd-jspdf', DASHD_URL . 'assets/vendors/jspdf.umd.min.js', [], '2.5.1', true);
-    wp_register_script('dashd-widget-runtime', false, ['dashd-jspdf'], DASHD_VERSION, true);
+    wp_register_script('dashd-widget-requests', DASHD_URL . 'assets/widget-request-cache.js', [], DASHD_VERSION, true);
+    wp_register_script('dashd-widget-runtime', false, ['dashd-jspdf', 'dashd-widget-requests'], DASHD_VERSION, true);
 });
 
 // 2. Скрипты и стили для админки
@@ -575,6 +576,7 @@ add_action('admin_enqueue_scripts', function() {
     }
     
     if (isset($_GET['page']) && $_GET['page'] === 'dashd-settings') wp_enqueue_media();
+    if (isset($_GET['page']) && $_GET['page'] === 'dashd-constructor') wp_enqueue_script('dashd-widget-requests');
 });
 
 // 3. Стили для фронтенда (скрипты будут загружаться только внутри шорткода)

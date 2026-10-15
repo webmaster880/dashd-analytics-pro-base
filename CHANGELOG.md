@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [11.9.22] - 2026-10-15
+
+### Fixed
+- Public chart API rate limiting now uses a fixed expiry window: rejected requests no longer prolong a 429 block, and responses include `Retry-After`.
+- Cached chart and period responses no longer consume the public API rate limit.
+- Widgets reuse in-flight and recently loaded API responses across identical charts, debounce rapid period changes, and redraw already loaded data when switching chart type.
+- Failed chart requests now replace the spinner with a readable error and retry button; repeat builder initialization no longer attaches duplicate event handlers.
+
 ## [11.9.21] - 2026-10-05
 
 ### Added

@@ -4,7 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.21`
+- Stable version: `11.9.22`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -40,6 +40,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 - PDF branding: SVG/PNG logo, ширина логотипа, watermark, footer signature.
 - Localization: словари переводов (EN/UK/HY/RO/KA).
 - Dark mode support: адаптация цветов графиков при переключении темы.
+- Запросы периодов и данных для одинаковых виджетов объединяются в браузере и кратковременно кешируются (30 секунд); быстрые изменения периода объединяются, а смена типа графика использует уже загруженные данные. При ошибке или HTTP 429 вместо пустого графика показывается сообщение и кнопка повтора. Лимит публичного API работает в фиксированном окне, возвращает `Retry-After` и не учитывает ответы из серверного кеша.
 
 ### Last Updated: формат даты
 
@@ -458,7 +459,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.21`
+Latest release: `11.9.22`
 ---
 
 ## Notes

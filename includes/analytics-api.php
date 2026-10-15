@@ -98,15 +98,23 @@ function dashd_api_get_client_ip() {
 }
 
 function dashd_api_rate_limit_exceeded($key, $limit, $window_seconds) {
+    $now = time();
+    $window_seconds = max(1, (int) $window_seconds);
     $bucket = get_transient($key);
-    if (!is_array($bucket) || !isset($bucket['count'])) {
-        $bucket = ['count' => 0];
+    if (!is_array($bucket) || !isset($bucket['count'], $bucket['reset_at']) || (int) $bucket['reset_at'] <= $now) {
+        $bucket = ['count' => 0, 'reset_at' => $now + $window_seconds];
+    }
+
+    if ((int) $bucket['count'] >= (int) $limit) {
+        if (!headers_sent()) {
+            header('Retry-After: ' . max(1, (int) $bucket['reset_at'] - $now));
+        }
+        return true;
     }
 
     $bucket['count'] = (int) $bucket['count'] + 1;
-    set_transient($key, $bucket, (int) $window_seconds);
-
-    return $bucket['count'] > (int) $limit;
+    set_transient($key, $bucket, max(1, (int) $bucket['reset_at'] - $now));
+    return false;
 }
 
 function dashd_api_public_rate_limit_check($bucket = 'public') {

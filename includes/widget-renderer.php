@@ -531,6 +531,10 @@ function dashd_render_front_widget($atts) {
             <div class="dashd-loader-overlay" style="display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 10; align-items: center; justify-content: center; backdrop-filter: blur(2px); transition: opacity 0.3s ease;">
                 <div style="width: 40px; height: 40px; border: 3px solid rgba(30, 135, 240, 0.2); border-radius: 50%; border-top-color: #1e87f0; animation: spin 1s ease-in-out infinite;"></div>
             </div>
+            <div class="dashd-load-error" role="alert" style="display:none; position:absolute; inset:0; z-index:11; background:rgba(255,255,255,0.94); align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:20px; text-align:center; color:#334155;">
+                <span class="dashd-load-error-message"></span>
+                <button type="button" class="dashd-load-retry uk-button uk-button-primary"><?php esc_html_e('Retry loading', 'dashd-analytics-pro'); ?></button>
+            </div>
             <canvas class="dashd-canvas"></canvas>
         </div>
         <div class="dashd-html-legend" data-html2canvas-ignore="false"></div>
@@ -599,6 +603,8 @@ function dashd_render_front_widget($atts) {
             errorPdf: "<?php echo esc_js(__('Error generating PDF.', 'dashd-analytics-pro')); ?>",
             errorServer: "<?php echo esc_js(__('Server connection error.', 'dashd-analytics-pro')); ?>",
             errorGeneral: "<?php echo esc_js(__('An error occurred.', 'dashd-analytics-pro')); ?>",
+            rateLimited: "<?php echo esc_js(__('Too many requests. Please retry in %d seconds.', 'dashd-analytics-pro')); ?>",
+            noPeriods: "<?php echo esc_js(__('No chart periods are available. Please try again.', 'dashd-analytics-pro')); ?>",
             negativeValueWarning: "<?php echo esc_js(__('Some values are negative and should be verified with the data owner.', 'dashd-analytics-pro')); ?>",
             negativeValueTooltip: "<?php echo esc_js(__('Warning: negative value, needs review.', 'dashd-analytics-pro')); ?>",
             donutNegativeFallback: "<?php echo esc_js(__('Donut view is not suitable for negative values. Showing bar view instead.', 'dashd-analytics-pro')); ?>",
@@ -613,6 +619,10 @@ function dashd_render_front_widget($atts) {
         let periodYears = [];
         let periodQuarters = ['Q4', 'Q3', 'Q2', 'Q1'];
         let periodYearQuarterMap = {};
+        let loadSequence = 0;
+        let loadTimer = null;
+        let initPromise = null;
+        let eventsBound = false;
 
         let sparklines = [];
         const hiddenLegendKeys = new Set();
@@ -681,7 +691,7 @@ function dashd_render_front_widget($atts) {
                         curQ = nextQuarter;
                         syncPeriodButtons();
                         syncMobileSelectors();
-                        loadData();
+                        scheduleLoadData();
                     };
                 });
             }
@@ -694,8 +704,34 @@ function dashd_render_front_widget($atts) {
         };
 
         const loader = root.querySelector('.dashd-loader-overlay');
-        const showLoader = () => { if (loader) { loader.style.display = 'flex'; setTimeout(() => loader.style.opacity = '1', 10); } };
-        const hideLoader = () => { if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 300); } };
+        const errorBox = root.querySelector('.dashd-load-error');
+        const showLoader = () => { if (loader) { loader.style.display = 'flex'; loader.style.opacity = '1'; } };
+        const hideLoader = () => { if (loader) { loader.style.opacity = '0'; loader.style.display = 'none'; } };
+        const hideError = () => { if (errorBox) errorBox.style.display = 'none'; };
+        const showError = (error, retry) => {
+            hideLoader();
+            if (!errorBox) return;
+            const retryAfter = Math.max(1, Number(error && error.retryAfter) || 10);
+            const message = error && error.status === 429
+                ? i18n.rateLimited.replace('%d', String(retryAfter))
+                : (error && error.message && !String(error.message).startsWith('HTTP Error:') ? error.message : i18n.errorServer);
+            errorBox.querySelector('.dashd-load-error-message').textContent = message;
+            errorBox.querySelector('.dashd-load-retry').onclick = () => { hideError(); retry(); };
+            errorBox.style.display = 'flex';
+        };
+        const requestJson = async (url) => {
+            if (window.DashDWidgetRequests && typeof window.DashDWidgetRequests.get === 'function') {
+                return window.DashDWidgetRequests.get(url);
+            }
+            const response = await fetch(url);
+            if (!response.ok) {
+                const error = new Error(`HTTP Error: ${response.status}`);
+                error.status = response.status;
+                if (response.status === 429) error.retryAfter = Number(response.headers.get('Retry-After')) || 10;
+                throw error;
+            }
+            return response.json();
+        };
 
         const formatNum = (value) => {
             if (value === null || value === undefined) return '';
@@ -1308,7 +1344,9 @@ function dashd_render_front_widget($atts) {
         };
 
         const loadData = async () => {
+            const requestId = ++loadSequence;
             showLoader();
+            hideError();
             syncPeriodControlVisibility();
 
             let url = `${config.ajax}?action=get_dashd_modern_data&key=${config.key}&lang=${config.lang}`;
@@ -1325,10 +1363,8 @@ function dashd_render_front_widget($atts) {
             }
 
             try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-
-                const json = await res.json();
+                const json = await requestJson(url);
+                if (requestId !== loadSequence || !root.isConnected) return;
 
                 if (json.success) {
                     if (json.data && Array.isArray(json.data.countries)) {
@@ -1345,11 +1381,31 @@ function dashd_render_front_widget($atts) {
                     render();
                 } else {
                     console.error("DashD API Error:", json);
-                    hideLoader();
+                    showError(new Error(json && json.data && json.data.msg ? json.data.msg : i18n.errorServer), loadData);
                 }
             } catch (error) {
+                if (requestId !== loadSequence || !root.isConnected) return;
                 console.error("DashD Network/Parse Error in loadData:", error);
+                showError(error, loadData);
+            }
+        };
+
+        const scheduleLoadData = () => {
+            ++loadSequence;
+            rawData = null;
+            if (loadTimer) clearTimeout(loadTimer);
+            loadTimer = setTimeout(() => { loadTimer = null; loadData(); }, 180);
+        };
+
+        const showAvailableView = () => {
+            if ((viewMode === 'line' || isSingleIndicatorYearMode()) ? trendData : rawData) {
+                ++loadSequence;
+                if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
                 hideLoader();
+                hideError();
+                render();
+            } else {
+                scheduleLoadData();
             }
         };
 
@@ -1927,7 +1983,7 @@ function dashd_render_front_widget($atts) {
                     viewMode = nextMode;
                     syncDesktopSelectors();
                     syncMobileSelectors();
-                    loadData();
+                    showAvailableView();
                 };
             });
             root.querySelectorAll('.dashd-toggle-scale .dashd-selector-label').forEach((el) => {
@@ -1969,7 +2025,7 @@ function dashd_render_front_widget($atts) {
                     viewMode = nextMode;
                     syncDesktopSelectors();
                     syncMobileSelectors();
-                    loadData();
+                    showAvailableView();
                 };
             }
             if (controls.mobileScaleSelect) {
@@ -2012,7 +2068,7 @@ function dashd_render_front_widget($atts) {
                     renderQuarterControlsForCurrentYear();
                     syncPeriodButtons();
                     syncMobileSelectors();
-                    loadData();
+                    scheduleLoadData();
                 };
             }
             if (controls.mobileQuarterSelect) {
@@ -2030,7 +2086,7 @@ function dashd_render_front_widget($atts) {
                     curQ = nextQuarter;
                     syncPeriodButtons();
                     syncMobileSelectors();
-                    loadData();
+                    scheduleLoadData();
                 };
             }
 
@@ -2816,6 +2872,7 @@ function dashd_render_front_widget($atts) {
                 const initialDark = document.documentElement.classList.contains('wp-dark-mode-active') || (bodyEl && bodyEl.classList.contains('wp-dark-mode-active'));
                 updateChartColors(initialDark);
 
+                observer.disconnect();
                 observer.observe(document.documentElement, { attributes: true });
                 if (bodyEl) {
                     observer.observe(bodyEl, { attributes: true });
@@ -2825,11 +2882,14 @@ function dashd_render_front_widget($atts) {
                 while (typeof Chart === 'undefined' && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
                 if (typeof Chart === 'undefined') {
                     console.error('DashD: Chart.js is not available. Widget initialization aborted.');
-                    hideLoader();
+                    showError(new Error(i18n.errorServer), runInit);
                     return;
                 }
 
-                bindEvents();
+                if (!eventsBound) {
+                    bindEvents();
+                    eventsBound = true;
+                }
 
                 try {
                     let periodsUrl = `${config.ajax}?action=get_dashd_periods_split&key=${config.key}`;
@@ -2839,10 +2899,7 @@ function dashd_render_front_widget($atts) {
                         periodsUrl += `&indicators=${encodeURIComponent(config.indicatorIds.join(','))}`;
                     }
                     periodsUrl = appendPeriodRangeParams(periodsUrl);
-                    const pRes = await fetch(periodsUrl);
-                    if (!pRes.ok) throw new Error(`HTTP Error: ${pRes.status}`);
-
-                    const pJson = await pRes.json();
+                    const pJson = await requestJson(periodsUrl);
 
                     if (pJson.success && pJson.data.years.length) {
                         periodYears = pJson.data.years
@@ -2898,7 +2955,7 @@ function dashd_render_front_widget($atts) {
                                     renderQuarterControlsForCurrentYear();
                                     syncPeriodButtons();
                                     syncMobileSelectors();
-                                    loadData();
+                                    scheduleLoadData();
                                 };
                             });
                         }
@@ -2913,19 +2970,21 @@ function dashd_render_front_widget($atts) {
                         await loadData();
                     } else {
                         console.warn("DashD: No periods found or API returned success:false");
-                        hideLoader();
+                        showError(new Error(i18n.noPeriods), runInit);
                     }
                 } catch (error) {
                     console.error("DashD Network/Parse Error in init:", error);
-                    hideLoader();
+                    showError(error, runInit);
                 }
             };
 
             const runInit = () => {
-                init().catch((error) => {
+                if (initPromise) return initPromise;
+                initPromise = init().catch((error) => {
                     console.error('DashD Unexpected init error:', error);
-                    hideLoader();
-                });
+                    showError(error, runInit);
+                }).finally(() => { initPromise = null; });
+                return initPromise;
             };
 
             runInit();

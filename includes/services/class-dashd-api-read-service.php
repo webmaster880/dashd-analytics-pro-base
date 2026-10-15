@@ -14,10 +14,6 @@ if (!class_exists('DashD_Api_Read_Service')) {
         public static function get_modern_data(array $query) {
             global $wpdb;
 
-            if (!function_exists('dashd_api_public_rate_limit_check') || !dashd_api_public_rate_limit_check('modern_data')) {
-                return self::error('rate_limited', 'Too many requests. Please try again later.', 429);
-            }
-
             $key = function_exists('dashd_normalize_source_key')
                 ? dashd_normalize_source_key((string) ($query['key'] ?? 'table1'), 'table1')
                 : sanitize_key((string) ($query['key'] ?? 'table1'));
@@ -60,6 +56,10 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 if (is_array($cached_data)) {
                     return $cached_data;
                 }
+            }
+
+            if (!function_exists('dashd_api_public_rate_limit_check') || !dashd_api_public_rate_limit_check('modern_data')) {
+                return self::error('rate_limited', 'Too many requests. Please try again later.', 429);
             }
 
             $col = 'name_' . $lang;
@@ -367,10 +367,6 @@ if (!class_exists('DashD_Api_Read_Service')) {
         public static function get_periods_split(array $query) {
             global $wpdb;
 
-            if (!function_exists('dashd_api_public_rate_limit_check') || !dashd_api_public_rate_limit_check('periods_split')) {
-                return self::error('rate_limited', 'Too many requests. Please try again later.', 429);
-            }
-
             $key = function_exists('dashd_normalize_source_key')
                 ? dashd_normalize_source_key((string) ($query['key'] ?? 'table1'), 'table1')
                 : sanitize_key((string) ($query['key'] ?? 'table1'));
@@ -397,6 +393,10 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 if (is_array($cached_data)) {
                     return $cached_data;
                 }
+            }
+
+            if (!function_exists('dashd_api_public_rate_limit_check') || !dashd_api_public_rate_limit_check('periods_split')) {
+                return self::error('rate_limited', 'Too many requests. Please try again later.', 429);
             }
 
             $max_years = function_exists('dashd_api_limit_int')
