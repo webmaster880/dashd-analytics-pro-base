@@ -260,6 +260,9 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
         $bar_stacked = dashd_yootheme_normalize_toggle($props['bar_stacked'] ?? true, true);
         $period_start = dashd_yootheme_normalize_period_bound($props['period_start'] ?? '');
         $period_end = dashd_yootheme_normalize_period_bound($props['period_end'] ?? '');
+        $last_update_format = is_string($props['last_update_format'] ?? null) ? $props['last_update_format'] : '';
+        $last_update_month_case = in_array($props['last_update_month_case'] ?? '', ['locale', 'lowercase'], true)
+            ? $props['last_update_month_case'] : 'inherit';
 
         $raw_palette_selection = $props['palette_mode'] ?? '';
         $palette_selection = is_scalar($raw_palette_selection) ? trim((string) $raw_palette_selection) : '';
@@ -293,6 +296,8 @@ if (!function_exists('dashd_yootheme_normalize_widget_props')) {
             'bar_stacked' => $bar_stacked,
             'period_start' => $period_start,
             'period_end' => $period_end,
+            'last_update_format' => $last_update_format,
+            'last_update_month_case' => $last_update_month_case,
             'country_order' => $country_order,
             'colors' => $colors,
             'palette_mode' => $palette_mode,
@@ -308,7 +313,7 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
      */
     function dashd_yootheme_build_shortcode(array $normalized) {
         return sprintf(
-            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s" palette_mode="%s"]',
+            '[dashd_widget table="%s" indicators="%s" mode="%s" scale="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" country_order="%s" colors="%s" palette_mode="%s" last_update_format="%s" last_update_month_case="%s"]',
             dashd_yootheme_escape_attr($normalized['table'] ?? 'table1'),
             dashd_yootheme_escape_attr($normalized['indicators'] ?? ''),
             dashd_yootheme_escape_attr($normalized['mode'] ?? 'bar'),
@@ -325,7 +330,9 @@ if (!function_exists('dashd_yootheme_build_shortcode')) {
             dashd_yootheme_escape_attr($normalized['period_end'] ?? ''),
             dashd_yootheme_escape_attr($normalized['country_order'] ?? ''),
             dashd_yootheme_escape_attr($normalized['colors'] ?? ''),
-            dashd_yootheme_escape_attr($normalized['palette_mode'] ?? 'legacy')
+            dashd_yootheme_escape_attr($normalized['palette_mode'] ?? 'legacy'),
+            str_replace(['\\', '[', ']'], ['&#92;', '&#91;', '&#93;'], dashd_yootheme_escape_attr($normalized['last_update_format'] ?? '')),
+            dashd_yootheme_escape_attr($normalized['last_update_month_case'] ?? 'inherit')
         );
     }
 }

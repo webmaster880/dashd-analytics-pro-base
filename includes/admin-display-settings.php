@@ -6,12 +6,12 @@ function dashd_read_date_format_input() {
     if (!isset($_POST['date_format']) || !is_string($_POST['date_format'])) {
         return new WP_Error('invalid_format');
     }
-    $format = trim(wp_unslash($_POST['date_format']));
-    $trailing_escapes = strlen($format) - strlen(rtrim($format, '\\'));
-    if (strlen($format) > 100 || preg_match('/[\x00-\x1F\x7F<>]/', $format) || $trailing_escapes % 2 !== 0) {
-        return new WP_Error('invalid_format');
-    }
-    return $format;
+    return dashd_validate_date_format(wp_unslash($_POST['date_format']));
+}
+
+function dashd_read_date_month_case_input() {
+    $case = $_POST['month_case'] ?? get_option('dashd_last_update_month_case', 'locale');
+    return in_array($case, ['locale', 'lowercase'], true) ? $case : new WP_Error('invalid_month_case');
 }
 
 add_action('admin_post_dashd_save_display_settings', 'dashd_save_display_settings');
@@ -22,10 +22,13 @@ function dashd_save_display_settings() {
     }
     check_admin_referer('dashd_display_settings', 'dashd_display_nonce');
     $format = dashd_read_date_format_input();
+    $month_case = dashd_read_date_month_case_input();
     $status = 'display_invalid';
-    if (!is_wp_error($format)) {
-        $saved = update_option('dashd_last_update_format', $format, false);
-        $status = $saved || get_option('dashd_last_update_format') === $format ? 'display_saved' : 'display_failed';
+    if (!is_wp_error($format) && !is_wp_error($month_case)) {
+        update_option('dashd_last_update_format', $format, false);
+        update_option('dashd_last_update_month_case', $month_case, false);
+        $status = get_option('dashd_last_update_format') === $format
+            && get_option('dashd_last_update_month_case') === $month_case ? 'display_saved' : 'display_failed';
         if ($status === 'display_saved') {
             dashd_clear_all_caches();
         }
@@ -42,10 +45,11 @@ function dashd_preview_update_date() {
     }
     check_ajax_referer('dashd_display_settings', 'nonce');
     $format = dashd_read_date_format_input();
-    if (is_wp_error($format)) {
+    $month_case = dashd_read_date_month_case_input();
+    if (is_wp_error($format) || is_wp_error($month_case)) {
         wp_send_json_error([], 400);
     }
-    wp_send_json_success(['preview' => dashd_format_update_date(current_time('mysql'), $format)]);
+    wp_send_json_success(['preview' => dashd_format_update_date(current_time('mysql'), $format, null, $month_case)]);
 }
 
 add_action('admin_enqueue_scripts', function () {
@@ -56,6 +60,7 @@ add_action('admin_enqueue_scripts', function () {
 
 function dashd_render_display_tab() {
     $format = (string) get_option('dashd_last_update_format', 'd.m.Y H:i');
+    $month_case = dashd_last_update_month_case();
     $presets = ['', 'd.m.Y H:i', 'd.m.Y', 'j F Y', 'd F Y', 'j M Y', 'F j, Y', 'Y-m-d', 'j F Y, H:i'];
     $preset = in_array($format, $presets, true) ? $format : 'custom';
     $now = current_time('mysql');
@@ -71,7 +76,7 @@ function dashd_render_display_tab() {
                 <label for="dashd-date-preset"><?php esc_html_e('Date format', 'dashd-analytics-pro'); ?></label>
                 <select id="dashd-date-preset">
                     <?php foreach ($presets as $value): ?>
-                        <option value="<?php echo esc_attr($value); ?>" <?php selected($preset, $value); ?>><?php echo esc_html($value === '' ? __('WordPress date and time settings', 'dashd-analytics-pro') : $value . ' (' . dashd_format_update_date($now, $value) . ')'); ?></option>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($preset, $value); ?>><?php echo esc_html($value === '' ? __('WordPress date and time settings', 'dashd-analytics-pro') : $value . ' (' . dashd_format_update_date($now, $value, null, $month_case) . ')'); ?></option>
                     <?php endforeach; ?>
                     <option value="custom" <?php selected($preset, 'custom'); ?>><?php esc_html_e('Custom format', 'dashd-analytics-pro'); ?></option>
                 </select>
@@ -80,6 +85,14 @@ function dashd_render_display_tab() {
                 <label for="dashd-date-format"><?php esc_html_e('Format template', 'dashd-analytics-pro'); ?></label>
                 <input type="text" class="regular-text" id="dashd-date-format" name="date_format" maxlength="100" value="<?php echo esc_attr($format); ?>" placeholder="j F Y" aria-describedby="dashd-date-help">
                 <p class="description" id="dashd-date-help"><?php esc_html_e('j: day; d: day with leading zero; F: full month; M: short month; Y: year; H:i: hours and minutes. Leave empty to use WordPress settings.', 'dashd-analytics-pro'); ?></p>
+            </div>
+            <div class="dashd-date-field">
+                <label for="dashd-date-month-case"><?php esc_html_e('Month name', 'dashd-analytics-pro'); ?></label>
+                <select id="dashd-date-month-case" name="month_case">
+                    <option value="locale" <?php selected($month_case, 'locale'); ?>><?php esc_html_e('As in the page language', 'dashd-analytics-pro'); ?></option>
+                    <option value="lowercase" <?php selected($month_case, 'lowercase'); ?>><?php esc_html_e('Lowercase (october / oct)', 'dashd-analytics-pro'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Applies to full and abbreviated month names. Charts can override these defaults in their own settings.', 'dashd-analytics-pro'); ?></p>
             </div>
             <div class="dashd-date-preview">
                 <strong><?php esc_html_e('Preview:', 'dashd-analytics-pro'); ?></strong>

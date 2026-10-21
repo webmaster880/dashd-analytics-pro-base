@@ -43,6 +43,8 @@ add_action('init', function() {
             'country_order' => ['type' => 'string', 'default' => ''],
             'period_start' => ['type' => 'string', 'default' => ''],
             'period_end' => ['type' => 'string', 'default' => ''],
+            'last_update_format' => ['type' => 'string', 'default' => ''],
+            'last_update_month_case' => ['type' => 'string', 'default' => 'inherit'],
             'colors'   => ['type' => 'string', 'default' => '#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7'],
             'palette_mode' => ['type' => 'string', 'default' => 'legacy'],
             'custom_colors' => ['type' => 'string', 'default' => '']

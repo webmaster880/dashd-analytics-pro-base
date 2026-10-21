@@ -117,6 +117,18 @@ function dashd_admin_constructor_page() {
                 </div>
 
                 <div class="uk-margin" style="margin-bottom: 15px;">
+                    <label for="c_last_update_format" style="font-weight: 600; display: block; margin-bottom: 5px;"><?php esc_html_e('Last updated: date format', 'dashd-analytics-pro'); ?></label>
+                    <input id="c_last_update_format" class="uk-input" type="text" maxlength="100" placeholder="d F Y" aria-describedby="c_last_update_format_help">
+                    <p id="c_last_update_format_help" class="description"><?php esc_html_e('WordPress format: d F Y = 21 October 2026; j M Y = 21 Oct 2026. Leave empty to use Settings > Display.', 'dashd-analytics-pro'); ?></p>
+                    <label for="c_last_update_month_case" style="display:block; margin-top:8px;"><?php esc_html_e('Month name', 'dashd-analytics-pro'); ?></label>
+                    <select id="c_last_update_month_case" class="uk-select">
+                        <option value="inherit"><?php esc_html_e('Use Settings > Display', 'dashd-analytics-pro'); ?></option>
+                        <option value="locale"><?php esc_html_e('As in the page language', 'dashd-analytics-pro'); ?></option>
+                        <option value="lowercase"><?php esc_html_e('Lowercase (october / oct)', 'dashd-analytics-pro'); ?></option>
+                    </select>
+                </div>
+
+                <div class="uk-margin" style="margin-bottom: 15px;">
                     <label style="font-weight: 600; display: block; margin-bottom: 8px;"><?php esc_html_e('Controls Visibility:', 'dashd-analytics-pro'); ?></label>
                     <label style="display:block; margin-bottom:6px;">
                         <input type="checkbox" id="c_show_view_toggle" checked>
@@ -234,6 +246,10 @@ function dashd_admin_constructor_page() {
             const periodStart = document.getElementById('c_period_start').value;
             const periodEnd = document.getElementById('c_period_end').value;
             const countryOrder = String(document.getElementById('c_country_order').value || '').trim().replace(/"/g, "'");
+            const dateFormat = document.getElementById('c_last_update_format').value.trim().replace(/[&"'\\\[\]]/g, (char) => ({
+                '&': '&amp;', '"': '&quot;', "'": '&#039;', '\\': '&#92;', '[': '&#91;', ']': '&#93;'
+            }[char]));
+            const monthCase = document.getElementById('c_last_update_month_case').value;
             
             let shortcode = `[dashd_widget indicators="${indicators}" mode="${mode}" scale="${scale}" colors="${colors}" palette_mode="${paletteMode}"`;
             if (gated === 'true') { shortcode += ` gated="true"`; }
@@ -253,6 +269,8 @@ function dashd_admin_constructor_page() {
             if (countryOrder !== '') {
                 shortcode += ` country_order="${countryOrder}"`;
             }
+            if (dateFormat !== '') shortcode += ` last_update_format="${dateFormat}"`;
+            if (monthCase !== 'inherit') shortcode += ` last_update_month_case="${monthCase}"`;
             shortcode += `]`;
             
             document.getElementById('res_sc').value = shortcode; 
@@ -295,11 +313,12 @@ function dashd_admin_constructor_page() {
         }
 
         document.getElementById('c_presets').onchange = syncPaletteControls;
-        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_show_negative_values', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order'].forEach(id => {
+        ['c_indicators', 'c_mode', 'c_scale', 'c_gated', 'c_show_view_toggle', 'c_show_scale_toggle', 'c_show_periods', 'c_show_data_warnings', 'c_show_negative_values', 'c_bar_orientation', 'c_bar_stacked', 'c_period_start', 'c_period_end', 'c_country_order', 'c_last_update_format', 'c_last_update_month_case'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.onchange = id === 'c_country_order' ? syncPaletteControls : upSC;
         });
+        document.getElementById('c_last_update_format').oninput = upSC;
         for(let i=1; i<=5; i++) { document.getElementById('clr_'+i).oninput = upSC; }
 
         window.addEventListener('load', syncPaletteControls);

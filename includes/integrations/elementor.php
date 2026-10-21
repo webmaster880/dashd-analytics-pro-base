@@ -231,6 +231,25 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                     'description' => __('Include negative values in charts, tables, and exports.', 'dashd-analytics-pro'),
                 ]);
 
+                $this->add_control('last_update_format', [
+                    'label' => __('Last updated: date format', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::TEXT,
+                    'default' => '',
+                    'placeholder' => 'd F Y',
+                    'description' => __('WordPress format, e.g. d F Y or j M Y. Leave empty to use Settings > Display.', 'dashd-analytics-pro'),
+                ]);
+
+                $this->add_control('last_update_month_case', [
+                    'label' => __('Month name', 'dashd-analytics-pro'),
+                    'type' => \Elementor\Controls_Manager::SELECT,
+                    'default' => 'inherit',
+                    'options' => [
+                        'inherit' => __('Use Settings > Display', 'dashd-analytics-pro'),
+                        'locale' => __('As in the page language', 'dashd-analytics-pro'),
+                        'lowercase' => __('Lowercase (october / oct)', 'dashd-analytics-pro'),
+                    ],
+                ]);
+
                 $this->add_control('country_order', [
                     'label' => __('Country Display Order', 'dashd-analytics-pro'),
                     'type' => \Elementor\Controls_Manager::TEXT,
@@ -336,6 +355,12 @@ add_action('elementor/widgets/register', function($widgets_manager) {
                 if ($indicators_csv !== '') {
                     $shortcode .= sprintf('indicators="%s" ', esc_attr($indicators_csv));
                 }
+                $date_format = $settings['last_update_format'] ?? '';
+                $date_format = is_string($date_format) ? $date_format : '';
+                $shortcode .= sprintf('last_update_format="%s" last_update_month_case="%s" ',
+                    str_replace(['\\', '[', ']'], ['&#92;', '&#91;', '&#93;'], esc_attr($date_format)),
+                    esc_attr(is_string($settings['last_update_month_case'] ?? null) ? $settings['last_update_month_case'] : 'inherit')
+                );
                 $shortcode .= sprintf(
                     'table="%s" mode="%s" scale="%s" bar_orientation="%s" bar_stacked="%s" period_start="%s" period_end="%s" gated="%s" show_view_toggle="%s" show_scale_toggle="%s" show_periods="%s" show_data_warnings="%s" show_negative_values="%s" country_order="%s" colors="%s" palette_mode="%s"]',
                     esc_attr($table),

@@ -5,6 +5,7 @@
     const preset = document.getElementById('dashd-date-preset');
     const input = document.getElementById('dashd-date-format');
     const preview = document.getElementById('dashd-date-preview');
+    const monthCase = document.getElementById('dashd-date-month-case');
     let timer;
     let revision = 0;
     let controller;
@@ -20,7 +21,8 @@
                 const body = new URLSearchParams({
                     action: 'dashd_preview_update_date',
                     nonce: form.elements.dashd_display_nonce.value,
-                    date_format: input.value
+                    date_format: input.value,
+                    month_case: monthCase.value
                 });
                 const response = await fetch(window.ajaxurl, { method: 'POST', body, signal: controller.signal });
                 const result = await response.json();
@@ -49,4 +51,5 @@
         preset.value = matching ? matching.value : 'custom';
         schedulePreview();
     });
+    monthCase.addEventListener('change', schedulePreview);
 })();

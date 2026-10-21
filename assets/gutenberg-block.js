@@ -128,6 +128,24 @@
                             onChange: (val) => setAttributes({ show_data_warnings: val ? 'true' : 'false' })
                         }),
                         el(TextControl, {
+                            label: 'Last updated: date format',
+                            value: attributes.last_update_format || '',
+                            placeholder: 'd F Y',
+                            maxLength: 100,
+                            help: 'WordPress format, e.g. d F Y or j M Y. Leave empty to use Settings > Display.',
+                            onChange: (val) => setAttributes({ last_update_format: val })
+                        }),
+                        el(SelectControl, {
+                            label: 'Month name',
+                            value: attributes.last_update_month_case || 'inherit',
+                            options: [
+                                { label: 'Use Settings > Display', value: 'inherit' },
+                                { label: 'As in the page language', value: 'locale' },
+                                { label: 'Lowercase (october / oct)', value: 'lowercase' }
+                            ],
+                            onChange: (val) => setAttributes({ last_update_month_case: val })
+                        }),
+                        el(TextControl, {
                             label: 'Country Display Order',
                             value: attributes.country_order || '',
                             help: 'Optional comma-separated names (e.g. Ukraine, Moldova, Georgia, Armenia).',

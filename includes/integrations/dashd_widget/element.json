@@ -26,6 +26,8 @@
         "country_order": "",
         "period_start": "",
         "period_end": "",
+        "last_update_format": "",
+        "last_update_month_case": "inherit",
         "colors": "#336DFF, #AF9BE2, #3B82F6, #BEE00F, #7FD3F7",
         "palette_mode": "",
         "colors_custom": "",

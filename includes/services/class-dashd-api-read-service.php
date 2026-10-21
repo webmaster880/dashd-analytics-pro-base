@@ -34,11 +34,19 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $fq = in_array($fq_raw, ['Q1', 'Q2', 'Q3', 'Q4'], true) ? $fq_raw : '';
             $period_range = self::normalize_period_range($query['period_start'] ?? '', $query['period_end'] ?? '');
 
+            $date_format = dashd_validate_date_format($query['last_update_format'] ?? '');
+            if (is_wp_error($date_format)) {
+                return self::error('invalid_date_format', 'Invalid last updated date format.', 400);
+            }
+            $date_format = dashd_last_update_format($date_format !== '' ? $date_format : null);
+            $month_case = dashd_last_update_month_case($query['last_update_month_case'] ?? null);
+
             $cache_key = function_exists('dashd_api_public_cache_key')
                 ? dashd_api_public_cache_key('modern_data', [
                     'key' => $key,
                     'lang' => $lang,
-                    'date_format' => dashd_last_update_format(),
+                    'date_format' => $date_format,
+                    'month_case' => $month_case,
                     'date_locale' => dashd_date_locale($lang),
                     'request_locale' => get_locale(),
                     'date_timezone' => wp_timezone_string(),
@@ -64,7 +72,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
             $col = 'name_' . $lang;
             $last_sync = get_option('dashd_last_global_sync', '');
-            $formatted_sync = dashd_format_update_date($last_sync, null, dashd_date_locale($lang));
+            $formatted_sync = dashd_format_update_date($last_sync, $date_format, dashd_date_locale($lang), $month_case);
 
             if ($is_all) {
                 $max_all_periods = function_exists('dashd_api_limit_int')

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [11.9.23] - 2026-10-21
+
+### Added
+- Per-chart `Last updated: date format` and `Month name` controls in Constructor, YOOtheme Pro, Elementor, and Gutenberg, with WordPress/PHP format templates and inheritance from Settings > Display.
+- A lowercase month option for full and abbreviated month names, also available in global display settings and its live preview. Localized grammatical forms, literal text, and the WordPress timezone are preserved.
+
+### Changed
+- Chart data cache keys include each chart's effective date format and month case; PDF reports use the same formatted update label.
+- Extended WordPress-core date checks cover month case inheritance, Unicode/genitive forms, locale restoration, and escaped date templates passed through a builder shortcode.
+
 ## [11.9.22] - 2026-10-15
 
 ### Fixed

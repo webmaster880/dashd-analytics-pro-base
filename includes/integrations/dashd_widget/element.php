@@ -163,6 +163,23 @@ return [
             'description' => 'When disabled, negative values are omitted from charts, tables, and exports.',
             'default' => true,
         ],
+        'last_update_format' => [
+            'label' => 'Last updated: date format',
+            'type' => 'text',
+            'attrs' => ['placeholder' => 'd F Y', 'maxlength' => 100],
+            'description' => 'WordPress format, e.g. d F Y or j M Y. Leave empty to use Settings > Display.',
+            'source' => true,
+        ],
+        'last_update_month_case' => [
+            'label' => 'Month name',
+            'type' => 'select',
+            'options' => [
+                'Use Settings > Display' => 'inherit',
+                'As in the page language' => 'locale',
+                'Lowercase (october / oct)' => 'lowercase',
+            ],
+            'default' => 'inherit',
+        ],
         'country_order' => [
             'label' => 'Country Display Order',
             'type' => 'text',
@@ -363,6 +380,8 @@ return [
                         'show_periods',
                         'show_data_warnings',
                         'show_negative_values',
+                        'last_update_format',
+                        'last_update_month_case',
                         'country_order',
                         'palette_mode',
                         [

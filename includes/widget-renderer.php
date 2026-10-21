@@ -223,6 +223,8 @@ function dashd_render_front_widget($atts) {
         'country_order' => '',
         'period_start' => '',
         'period_end' => '',
+        'last_update_format' => '',
+        'last_update_month_case' => 'inherit',
     ], $atts);
 
     $default_colors = ['#336DFF', '#AF9BE2', '#3B82F6', '#BEE00F', '#7FD3F7'];
@@ -302,6 +304,12 @@ function dashd_render_front_widget($atts) {
     $show_periods = $bool_from_atts($a['show_periods'] ?? 'true', true);
     $show_data_warnings = $bool_from_atts($a['show_data_warnings'] ?? 'true', true);
     $show_negative_values = $bool_from_atts($a['show_negative_values'] ?? 'true', true);
+    $last_update_format = is_string($a['last_update_format'])
+        ? html_entity_decode($a['last_update_format'], ENT_QUOTES | ENT_HTML5, 'UTF-8') : '';
+    $last_update_format = dashd_validate_date_format($last_update_format);
+    if (is_wp_error($last_update_format)) $last_update_format = '';
+    $last_update_month_case = in_array($a['last_update_month_case'], ['locale', 'lowercase'], true)
+        ? $a['last_update_month_case'] : 'inherit';
     $palette_mode = in_array((string) $a['palette_mode'], ['legacy', 'preset', 'custom'], true)
         ? (string) $a['palette_mode'] : 'legacy';
     $bar_orientation = strtolower(trim((string) ($a['bar_orientation'] ?? 'horizontal')));
@@ -403,6 +411,8 @@ function dashd_render_front_widget($atts) {
         'countryOrder' => $country_order,
         'periodStart' => $period_start,
         'periodEnd' => $period_end,
+        'lastUpdateFormat' => $last_update_format,
+        'lastUpdateMonthCase' => $last_update_month_case,
         'leadNonce' => wp_create_nonce('dashd_capture_lead_' . $table),
     ];
 
@@ -1350,6 +1360,8 @@ function dashd_render_front_widget($atts) {
             syncPeriodControlVisibility();
 
             let url = `${config.ajax}?action=get_dashd_modern_data&key=${config.key}&lang=${config.lang}`;
+            if (config.lastUpdateFormat) url += `&last_update_format=${encodeURIComponent(config.lastUpdateFormat)}`;
+            if (config.lastUpdateMonthCase !== 'inherit') url += `&last_update_month_case=${encodeURIComponent(config.lastUpdateMonthCase)}`;
             if (Array.isArray(config.indicatorSpecs) && config.indicatorSpecs.length) {
                 url += `&indicators=${encodeURIComponent(config.indicatorSpecs.join(','))}`;
             } else if (Array.isArray(config.indicatorIds) && config.indicatorIds.length) {
