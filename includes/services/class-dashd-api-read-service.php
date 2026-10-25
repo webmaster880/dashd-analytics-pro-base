@@ -57,6 +57,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'period_start' => $period_range['start_key'],
                     'period_end' => $period_range['end_key'],
                     'period_model' => 'annual_q4_or_quarters_v1',
+                    'update_date_model' => 'record_dates_v1',
                 ])
                 : '';
             if ($cache_key !== '') {
@@ -71,8 +72,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             $col = 'name_' . $lang;
-            $last_sync = get_option('dashd_last_global_sync', '');
-            $formatted_sync = dashd_format_update_date($last_sync, $date_format, dashd_date_locale($lang), $month_case);
+            $update_dates = [];
 
             if ($is_all) {
                 $max_all_periods = function_exists('dashd_api_limit_int')
@@ -133,7 +133,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 }
 
                 $all_sql = "
-                    SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, r.val, r.data_year, r.data_quarter
+                    SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, r.val, r.data_year, r.data_quarter, r.record_date
                     FROM {$wpdb->prefix}dashd_data_records r 
                     JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id 
                     JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
@@ -164,7 +164,6 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'countries' => [],
                     'country_flags' => [],
                     'indicators' => [],
-                    'last_sync' => $formatted_sync,
                 ];
                 $country_set = [];
                 $truncated = [
@@ -204,10 +203,12 @@ if (!class_exists('DashD_Api_Read_Service')) {
                         $data['indicators'][$ind_label][$cty_label] = array_fill(0, count($period_labels), 0);
                     }
                     $data['indicators'][$ind_label][$cty_label][$p_idx] += (float) $row->val;
+                    self::remember_update_date($update_dates, $cty_label, $row->record_date ?? '');
                 }
                 if ($truncated['countries'] || $truncated['indicators']) {
                     $data['truncated'] = $truncated;
                 }
+                $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case);
                 self::cache_if_needed($cache_key, $data, 'modern_data');
 
                 return $data;
@@ -253,7 +254,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $current_quarter_placeholders = implode(', ', array_fill(0, count($current_quarters), '%s'));
 
             $current_sql = "
-                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val
+                SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val, MAX(r.record_date) as record_date
                 FROM {$wpdb->prefix}dashd_data_records r
                 JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
                 JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
@@ -313,7 +314,6 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 'country_flags' => [],
                 'indicators' => [],
                 'previous' => [],
-                'last_sync' => $formatted_sync,
                 'year' => $fy,
                 'quarter' => $fq,
             ];
@@ -345,6 +345,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 }
 
                 $data['indicators'][$ind_label][$cty_label] = (float) $row->val;
+                self::remember_update_date($update_dates, $cty_label, $row->record_date ?? '');
             }
 
             foreach ($previous as $row) {
@@ -363,6 +364,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $data['truncated'] = $truncated;
             }
 
+            $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case);
             self::cache_if_needed($cache_key, $data, 'modern_data');
 
             return $data;
@@ -505,8 +507,36 @@ if (!class_exists('DashD_Api_Read_Service')) {
         }
 
         /**
-         * @param array<string,mixed> $data
+         * @param array<string,string> $dates
          */
+        private static function remember_update_date(array &$dates, $country, $value) {
+            $value = (string) $value;
+            if (strlen($value) === 10) $value .= ' 00:00:00';
+            if ($value === '' || $value <= ($dates[$country] ?? '') || (int) substr($value, 0, 4) < 1) return;
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $value);
+            if ($date && $date->format('Y-m-d H:i:s') === $value) {
+                $dates[$country] = $value;
+            }
+        }
+
+        private static function attach_update_dates(array $data, array $dates, $format, $lang, $month_case) {
+            $latest = $dates ? max($dates) : '';
+            $locale = dashd_date_locale($lang);
+            $data['last_updated_at'] = $latest;
+            // Keep the existing API field for older widget markup and PDF consumers.
+            $data['last_sync'] = dashd_format_update_date($latest, $format, $locale, $month_case);
+            $data['last_updated_by_country'] = [];
+            $formatted_dates = [$latest => $data['last_sync']];
+            foreach ($dates as $country => $date) {
+                if (!isset($formatted_dates[$date])) {
+                    $formatted_dates[$date] = dashd_format_update_date($date, $format, $locale, $month_case);
+                }
+                $data['last_updated_by_country'][$country] = $formatted_dates[$date];
+            }
+            return $data;
+        }
+
+        /** @param array<string,mixed> $data */
         private static function cache_if_needed($cache_key, array $data, $bucket) {
             if (!is_string($cache_key) || $cache_key === '') {
                 return;

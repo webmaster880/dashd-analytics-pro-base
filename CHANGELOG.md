@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [11.9.24] - 2026-10-25
+
+### Fixed
+- The chart/PDF `Last updated` label now uses the latest stored `record_date` among the chart's selected records instead of the last synchronization run. Unchanged imports no longer advance this label.
+- Update dates follow indicator/source selection, period bounds, annual quarter aggregation, and country selection; records from unrelated charts do not affect the date. Missing dates display `--`.
+
+### Changed
+- Read API responses include record-based `last_updated_at` and formatted country-specific dates while preserving the `last_sync` field for compatibility. Cache keys distinguish the new date semantics.
+- Added API regression checks using session-only temporary tables; existing date formats, month case options, timezone behavior, and PDF labels are preserved.
+
 ## [11.9.23] - 2026-10-21
 
 ### Added

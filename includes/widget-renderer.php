@@ -1353,6 +1353,16 @@ function dashd_render_front_widget($atts) {
             return lines;
         };
 
+        const syncUpdateDate = () => {
+            const data = (viewMode === 'line' || isSingleIndicatorYearMode()) ? trendData : rawData;
+            const label = root.querySelector('.dashd-last-sync-time');
+            if (!label || !data) return;
+            const date = curCty === i18n.allCountries || !data.last_updated_by_country
+                ? data.last_sync
+                : data.last_updated_by_country[curCty];
+            label.innerText = `${i18n.lastUpdated} ${date || '--'}`;
+        };
+
         const loadData = async () => {
             const requestId = ++loadSequence;
             showLoader();
@@ -1388,8 +1398,6 @@ function dashd_render_front_widget($atts) {
                     if (json.data.quarter) curQ = json.data.quarter;
                     syncPeriodButtons();
                     syncMobileSelectors();
-                    const syncDiv = root.querySelector('.dashd-last-sync-time');
-                    if (syncDiv && json.data.last_sync) syncDiv.innerText = `${i18n.lastUpdated} ` + json.data.last_sync;
                     render();
                 } else {
                     console.error("DashD API Error:", json);
@@ -1970,6 +1978,7 @@ function dashd_render_front_widget($atts) {
             syncPeriodControlVisibility();
             syncMobileSelectors();
             syncWidgetTitle();
+            syncUpdateDate();
             const cBox = root.querySelector('.dashd-country-btns'); let cList = [];
             if ((viewMode === 'line' || isSingleIndicatorYearMode()) && trendData && trendData.countries) {
                 cList = trendData.countries;
@@ -1981,7 +1990,7 @@ function dashd_render_front_widget($atts) {
                 cBox.innerHTML = `<button class="dashd-ui-btn dashd-country-btn ${curCty===i18n.allCountries?'active-btn':''}">${escapeHtml(i18n.allCountries)}</button>`;
                 cList.forEach(c => { cBox.innerHTML += `<button class="dashd-ui-btn dashd-country-btn ${curCty===c?'active-btn':''}">${escapeHtml(c)}</button>`; });
                 cBox.querySelectorAll('button').forEach(b => {
-                    b.onclick = () => { curCty = b.innerText; cBox.querySelectorAll('button').forEach(x => x.classList.remove('active-btn')); b.classList.add('active-btn'); renderChart(); renderTable(); };
+                    b.onclick = () => { curCty = b.innerText; cBox.querySelectorAll('button').forEach(x => x.classList.remove('active-btn')); b.classList.add('active-btn'); syncUpdateDate(); renderChart(); renderTable(); };
                 });
             } else if (cBox) { cBox.style.display = 'none'; }
             renderChart(); renderTable();
