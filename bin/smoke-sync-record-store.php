@@ -48,6 +48,7 @@ function expect_same($actual, $expected, $label) {
     }
 }
 
+require dirname(__DIR__) . '/includes/network-storage.php';
 require dirname(__DIR__) . '/includes/services/class-dashd-sync-source-record-store.php';
 
 $wpdb = new DashD_Test_Wpdb();

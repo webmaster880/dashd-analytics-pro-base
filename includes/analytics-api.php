@@ -152,10 +152,11 @@ function dashd_api_public_cache_key($bucket, array $args = []) {
         $bucket = 'public';
     }
 
-    $cache_ver = (string) get_option('dashd_cache_ver', '0');
-    $payload = wp_json_encode([$cache_ver, $args], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $cache_ver = (string) dashd_data_option('dashd_cache_ver', '0');
+    $scope = [dashd_table('data_records'), get_current_blog_id(), $cache_ver];
+    $payload = wp_json_encode([$scope, $args], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if (!is_string($payload) || $payload === '') {
-        $payload = serialize([$cache_ver, $args]);
+        $payload = serialize([$scope, $args]);
     }
 
     return 'dashd_api_' . $bucket . '_' . md5($payload);
@@ -208,23 +209,17 @@ function dashd_api_is_valid_email_domain($domain) {
 
 function dashd_api_get_allowed_source_map() {
     global $wpdb;
-    static $allowed = null;
-
-    if (is_array($allowed)) {
-        return $allowed;
-    }
-
-    $cache_ver = (string) get_option('dashd_cache_ver', '0');
-    $cache_key = 'dashd_api_allowed_sources_' . md5($cache_ver);
+    static $maps = [];
+    $cache_key = dashd_api_public_cache_key('allowed_sources');
+    if (isset($maps[$cache_key])) return $maps[$cache_key];
     $cached = get_transient($cache_key);
     if (is_array($cached)) {
-        $allowed = $cached;
-        return $allowed;
+        return $maps[$cache_key] = $cached;
     }
 
     $allowed = [];
 
-    $settings_keys = $wpdb->get_col("SELECT source_key FROM {$wpdb->prefix}dashd_settings");
+    $settings_keys = $wpdb->get_col("SELECT source_key FROM " . dashd_table('settings'));
     if (is_array($settings_keys)) {
         foreach ($settings_keys as $key) {
             $normalized = function_exists('dashd_normalize_source_key')
@@ -237,7 +232,7 @@ function dashd_api_get_allowed_source_map() {
     }
 
     // Backward compatibility: if source has data records, treat it as known.
-    $record_keys = $wpdb->get_col("SELECT DISTINCT source_key FROM {$wpdb->prefix}dashd_data_records");
+    $record_keys = $wpdb->get_col("SELECT DISTINCT source_key FROM " . dashd_table('data_records'));
     if (is_array($record_keys)) {
         foreach ($record_keys as $key) {
             $normalized = function_exists('dashd_normalize_source_key')
@@ -250,7 +245,7 @@ function dashd_api_get_allowed_source_map() {
     }
 
     set_transient($cache_key, $allowed, 5 * MINUTE_IN_SECONDS);
-    return $allowed;
+    return $maps[$cache_key] = $allowed;
 }
 
 function dashd_api_is_allowed_source($source) {

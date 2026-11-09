@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DashD Analytics Pro Engine
  * Description: Реляционная система. Добавлена поддержка локализации (.mo/.po файлов).
- * Version: 11.9.24
+ * Version: 11.9.25-stage.1
  * Text Domain: dashd-analytics-pro
  * Domain Path: 
  * Author: Yury Vdovychenko
@@ -16,7 +16,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('DASHD_VERSION', '11.9.24');
+define('DASHD_VERSION', '11.9.25-stage.1');
 define('DASHD_DB_SCHEMA_VERSION', '11.0.8');
 define('DASHD_FILE', __FILE__);
 define('DASHD_PATH', plugin_dir_path(__FILE__));
@@ -508,6 +508,7 @@ if (!function_exists('dashd_update_sensitive_setting')) {
 }
 
 require_once DASHD_PATH . 'includes/database.php';
+require_once DASHD_PATH . 'includes/network-storage.php';
 require_once DASHD_PATH . 'includes/date-format.php';
 require_once DASHD_PATH . 'includes/repositories/class-dashd-lead-repository.php';
 require_once DASHD_PATH . 'includes/services/class-dashd-api-read-service.php';
@@ -524,6 +525,8 @@ require_once DASHD_PATH . 'includes/admin-constructor.php';
 require_once DASHD_PATH . 'includes/analytics-api.php';
 require_once DASHD_PATH . 'includes/widget-renderer.php';
 require_once DASHD_PATH . 'includes/github-updater.php';
+
+dashd_register_shared_data_guards();
 
 if (function_exists('dashd_register_github_updater')) {
     dashd_register_github_updater(DASHD_FILE, DASHD_VERSION);
@@ -543,11 +546,11 @@ add_action('admin_init', function() {
     }
 });
 
-if (!wp_next_scheduled('dashd_daily_sync_event')) {
+if (dashd_is_data_owner_site() && !wp_next_scheduled('dashd_daily_sync_event')) {
     wp_schedule_event(time(), 'daily', 'dashd_daily_sync_event');
 }
 add_action('dashd_daily_sync_event', function() {
-    if (get_option('dashd_auto_sync') === 'enabled') dashd_sync_repository(false);
+    if (dashd_is_data_owner_site() && dashd_data_option('dashd_auto_sync') === 'enabled') dashd_sync_repository(false);
 });
 register_deactivation_hook(__FILE__, function() {
     wp_clear_scheduled_hook('dashd_daily_sync_event');
@@ -745,8 +748,8 @@ add_action('admin_post_dashd_manual_sync', function() {
         wp_die('Access denied');
     }
     check_admin_referer('dashd_manual_sync', 'dashd_manual_sync_nonce');
-    dashd_sync_repository(true);
-    wp_redirect(admin_url('admin.php?page=dashd-settings&tab=sources&status=synced'));
+    $status = dashd_sync_repository(true) ? 'synced' : 'sync_busy';
+    wp_redirect(admin_url('admin.php?page=dashd-settings&tab=sources&status=' . $status));
     exit;
 });
 
@@ -821,7 +824,7 @@ function dashd_send_anomaly_alert($anomalies) {
 }
 
 function dashd_clear_all_caches() {
-    update_option('dashd_cache_ver', time());
+    dashd_update_data_option('dashd_cache_ver', wp_generate_uuid4());
 }
 
 // =========================================================

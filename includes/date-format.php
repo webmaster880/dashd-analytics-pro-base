@@ -40,10 +40,10 @@ function dashd_date_locale($lang) {
     return $locales[$lang] ?? $locale;
 }
 
-function dashd_format_update_date($mysql_date, $format = null, $locale = null, $month_case = null) {
+function dashd_format_update_date($mysql_date, $format = null, $locale = null, $month_case = null, $timezone = null) {
     global $wp_locale;
     // Sync times are stored as local WordPress time, not UTC.
-    $timezone = wp_timezone();
+    $timezone = $timezone ?? wp_timezone();
     $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', (string) $mysql_date, $timezone);
     if (!$date || $date->format('Y-m-d H:i:s') !== (string) $mysql_date) {
         return '--';

@@ -62,7 +62,7 @@ add_action('enqueue_block_editor_assets', function() {
     );
 
     global $wpdb;
-    $sources = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings");
+    $sources = $wpdb->get_results("SELECT source_key, source_label FROM " . dashd_table('settings'));
     $indicator_options = function_exists('dashd_integration_get_indicator_options')
         ? dashd_integration_get_indicator_options()
         : [];

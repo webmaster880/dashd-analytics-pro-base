@@ -17,7 +17,7 @@ if (!class_exists('DashD_Sync_Dictionary_Service')) {
         public function __construct() {
             global $wpdb;
 
-            $existing_indicators = $wpdb->get_results("SELECT id, name_en FROM {$wpdb->prefix}dashd_indicators", ARRAY_A);
+            $existing_indicators = $wpdb->get_results("SELECT id, name_en FROM " . dashd_table('indicators'), ARRAY_A);
             if (is_array($existing_indicators)) {
                 foreach ($existing_indicators as $row) {
                     $name = trim((string) ($row['name_en'] ?? ''));
@@ -28,7 +28,7 @@ if (!class_exists('DashD_Sync_Dictionary_Service')) {
                 }
             }
 
-            $existing_countries = $wpdb->get_results("SELECT id, name_en FROM {$wpdb->prefix}dashd_countries", ARRAY_A);
+            $existing_countries = $wpdb->get_results("SELECT id, name_en FROM " . dashd_table('countries'), ARRAY_A);
             if (is_array($existing_countries)) {
                 foreach ($existing_countries as $row) {
                     $name = trim((string) ($row['name_en'] ?? ''));
@@ -52,8 +52,8 @@ if (!class_exists('DashD_Sync_Dictionary_Service')) {
                 return (int) $this->indicator_id_map[$name];
             }
 
-            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}dashd_indicators (name_en) VALUES (%s)", $name));
-            $id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}dashd_indicators WHERE name_en = %s", $name));
+            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO " . dashd_table('indicators') . " (name_en) VALUES (%s)", $name));
+            $id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . dashd_table('indicators') . " WHERE name_en = %s", $name));
             if ($id > 0) {
                 $this->indicator_id_map[$name] = $id;
             }
@@ -73,8 +73,8 @@ if (!class_exists('DashD_Sync_Dictionary_Service')) {
                 return (int) $this->country_id_map[$name];
             }
 
-            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}dashd_countries (name_en) VALUES (%s)", $name));
-            $id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}dashd_countries WHERE name_en = %s", $name));
+            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO " . dashd_table('countries') . " (name_en) VALUES (%s)", $name));
+            $id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . dashd_table('countries') . " WHERE name_en = %s", $name));
             if ($id > 0) {
                 $this->country_id_map[$name] = $id;
             }

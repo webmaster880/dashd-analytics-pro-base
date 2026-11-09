@@ -15,14 +15,12 @@ if (!function_exists('dashd_integration_get_source_options')) {
      */
     function dashd_integration_get_source_options() {
         global $wpdb;
-        static $cached = null;
-
-        if (is_array($cached)) {
-            return $cached;
-        }
+        static $by_scope = [];
+        $scope = dashd_table('data_records') . ':' . dashd_data_option('dashd_cache_ver', '0');
+        if (isset($by_scope[$scope])) return $by_scope[$scope];
 
         $cached = [];
-        $rows = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings ORDER BY id ASC");
+        $rows = $wpdb->get_results("SELECT source_key, source_label FROM " . dashd_table('settings') . " ORDER BY id ASC");
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $raw_key = (string) ($row->source_key ?? '');
@@ -46,7 +44,7 @@ if (!function_exists('dashd_integration_get_source_options')) {
             $cached['table1'] = 'Default Table (table1)';
         }
 
-        return $cached;
+        return $by_scope[$scope] = $cached;
     }
 }
 
@@ -59,11 +57,9 @@ if (!function_exists('dashd_integration_get_indicator_options')) {
      */
     function dashd_integration_get_indicator_options() {
         global $wpdb;
-        static $cached = null;
-
-        if (is_array($cached)) {
-            return $cached;
-        }
+        static $by_scope = [];
+        $scope = dashd_table('data_records') . ':' . dashd_data_option('dashd_cache_ver', '0');
+        if (isset($by_scope[$scope])) return $by_scope[$scope];
 
         $cached = [];
         $source_options = dashd_integration_get_source_options();
@@ -72,7 +68,7 @@ if (!function_exists('dashd_integration_get_indicator_options')) {
 
         $source_map = [];
         $map_rows = $wpdb->get_results(
-            "SELECT indicator_id, MIN(source_key) AS source_key FROM {$wpdb->prefix}dashd_data_records GROUP BY indicator_id"
+            "SELECT indicator_id, MIN(source_key) AS source_key FROM " . dashd_table('data_records') . " GROUP BY indicator_id"
         );
         if (is_array($map_rows)) {
             foreach ($map_rows as $row) {
@@ -92,10 +88,10 @@ if (!function_exists('dashd_integration_get_indicator_options')) {
         }
 
         $rows = $wpdb->get_results(
-            "SELECT id, name_en, target_source, sort_order FROM {$wpdb->prefix}dashd_indicators ORDER BY sort_order ASC, id ASC"
+            "SELECT id, name_en, target_source, sort_order FROM " . dashd_table('indicators') . " ORDER BY sort_order ASC, id ASC"
         );
         if (!is_array($rows)) {
-            return $cached;
+            return $by_scope[$scope] = $cached;
         }
 
         foreach ($rows as $row) {
@@ -127,7 +123,7 @@ if (!function_exists('dashd_integration_get_indicator_options')) {
             $cached[$token] = sprintf('%s (%s)', $name, $resolved_source);
         }
 
-        return $cached;
+        return $by_scope[$scope] = $cached;
     }
 }
 
@@ -139,16 +135,14 @@ if (!function_exists('dashd_integration_get_period_options')) {
      */
     function dashd_integration_get_period_options() {
         global $wpdb;
-        static $cached = null;
-
-        if (is_array($cached)) {
-            return $cached;
-        }
+        static $by_scope = [];
+        $scope = dashd_table('data_records') . ':' . dashd_data_option('dashd_cache_ver', '0');
+        if (isset($by_scope[$scope])) return $by_scope[$scope];
 
         $cached = [];
         $rows = $wpdb->get_results(
             "SELECT DISTINCT data_year, data_quarter
-             FROM {$wpdb->prefix}dashd_data_records
+             FROM " . dashd_table('data_records') . "
              WHERE data_year > 0 AND data_quarter IN ('Q1', 'Q2', 'Q3', 'Q4')
              ORDER BY data_year ASC, FIELD(data_quarter, 'Q1', 'Q2', 'Q3', 'Q4') ASC"
         );
@@ -163,6 +157,6 @@ if (!function_exists('dashd_integration_get_period_options')) {
             $cached[sprintf('%d-%s', $year, $quarter)] = sprintf('%s %d', $quarter, $year);
         }
 
-        return $cached;
+        return $by_scope[$scope] = $cached;
     }
 }

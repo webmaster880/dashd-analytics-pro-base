@@ -143,7 +143,7 @@ if (!function_exists('dashd_get_indicator_source_map')) {
 
         $target_rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT id, target_source FROM {$wpdb->prefix}dashd_indicators WHERE id IN ($placeholders)",
+                "SELECT id, target_source FROM " . dashd_table('indicators') . " WHERE id IN ($placeholders)",
                 ...$ids
             )
         );
@@ -175,7 +175,7 @@ if (!function_exists('dashd_get_indicator_source_map')) {
             $rows = $wpdb->get_results(
                 $wpdb->prepare(
                     "SELECT indicator_id, MIN(source_key) AS source_key
-                     FROM {$wpdb->prefix}dashd_data_records
+                     FROM " . dashd_table('data_records') . "
                      WHERE indicator_id IN ($sub_placeholders)
                      GROUP BY indicator_id",
                     ...$missing

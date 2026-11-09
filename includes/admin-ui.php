@@ -29,13 +29,14 @@ function dashd_render_admin_sync_controls() {
                 <input type="hidden" name="action" value="dashd_save_auto_sync">
                 <?php wp_nonce_field('dashd_save_auto_sync', 'dashd_save_auto_sync_nonce'); ?>
                 <select name="auto_sync_status" style="max-width: 200px;">
-                    <option value="disabled" <?php selected(get_option('dashd_auto_sync'), 'disabled'); ?>><?php esc_html_e('Disabled', 'dashd-analytics-pro'); ?></option>
-                    <option value="enabled" <?php selected(get_option('dashd_auto_sync'), 'enabled'); ?>><?php esc_html_e('Enabled (Daily)', 'dashd-analytics-pro'); ?></option>
+                    <option value="disabled" <?php selected(dashd_data_option('dashd_auto_sync'), 'disabled'); ?>><?php esc_html_e('Disabled', 'dashd-analytics-pro'); ?></option>
+                    <option value="enabled" <?php selected(dashd_data_option('dashd_auto_sync'), 'enabled'); ?>><?php esc_html_e('Enabled (Daily)', 'dashd-analytics-pro'); ?></option>
                 </select>
                 <button type="submit" class="button button-secondary dashd-admin-action-button"><?php esc_html_e('Save Schedule', 'dashd-analytics-pro'); ?></button>
             </form>
         </div>
 
+        <?php if (!dashd_network_owner_id()): ?>
         <div class="dashd-card danger-zone dashd-action-card">
             <h3 style="margin-top:0; color:#d63638;"><?php esc_html_e('Danger Zone: Wipe Data', 'dashd-analytics-pro'); ?></h3>
             <p style="color:#646970; margin-bottom: 20px;"><?php esc_html_e('This action will permanently delete all records, snapshots, and captured leads.', 'dashd-analytics-pro'); ?></p>
@@ -47,6 +48,7 @@ function dashd_render_admin_sync_controls() {
                 </button>
             </form>
         </div>
+        <?php endif; ?>
     </div>
     <?php
 }
@@ -54,7 +56,7 @@ function dashd_render_admin_sync_controls() {
 
 if (!function_exists('dashd_render_admin_sync_logs_table')) {
 function dashd_render_admin_sync_logs_table($with_actions = true) {
-    $logs = get_option('dashd_sync_logs', []);
+    $logs = dashd_data_option('dashd_sync_logs', []);
     ?>
     <?php if ($with_actions): ?>
     <div class="dashd-toolbar" style="margin-top: 12px;">
@@ -118,10 +120,10 @@ function dashd_admin_main_page() {
     global $wpdb;
     
     $stats = [
-        'recs' => $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}dashd_data_records"),
-        'cty'  => $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}dashd_countries"),
-        'ind'  => $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}dashd_indicators"),
-        'src'  => $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}dashd_settings")
+        'recs' => $wpdb->get_var("SELECT COUNT(*) FROM " . dashd_table('data_records')),
+        'cty'  => $wpdb->get_var("SELECT COUNT(*) FROM " . dashd_table('countries')),
+        'ind'  => $wpdb->get_var("SELECT COUNT(*) FROM " . dashd_table('indicators')),
+        'src'  => $wpdb->get_var("SELECT COUNT(*) FROM " . dashd_table('settings'))
     ];
     
     ?>
@@ -182,12 +184,13 @@ add_action('admin_post_dashd_save_auto_sync', function() {
     if (!in_array($auto_sync, ['enabled', 'disabled'], true)) {
         $auto_sync = 'disabled';
     }
-    update_option('dashd_auto_sync', $auto_sync);
+    dashd_update_data_option('dashd_auto_sync', $auto_sync);
     wp_redirect(admin_url('admin.php?page=dashd-settings&tab=sources&status=cron_saved'));
     exit;
 });
 
 add_action('admin_post_dashd_wipe_all_data', function() {
+    if (dashd_network_owner_id()) dashd_forbidden_response();
     if (function_exists('dashd_enforce_http_method')) {
         dashd_enforce_http_method('POST');
     }
@@ -202,8 +205,8 @@ add_action('admin_post_dashd_wipe_all_data', function() {
 
     global $wpdb;
     $tables = [
-        "{$wpdb->prefix}dashd_data_records",
-        "{$wpdb->prefix}dashd_snapshots",
+        dashd_table('data_records'),
+        dashd_table('snapshots'),
         "{$wpdb->prefix}dashd_leads",
     ];
 
@@ -220,7 +223,7 @@ add_action('admin_post_dashd_wipe_all_data', function() {
         }
     }
 
-    update_option('dashd_sync_logs', []);
+    dashd_update_data_option('dashd_sync_logs', []);
     delete_option('dashd_last_global_sync');
     dashd_clear_all_caches();
 
@@ -240,7 +243,7 @@ add_action('admin_post_dashd_export_sync_logs', function() {
     }
     check_admin_referer('dashd_export_sync_logs', 'dashd_export_sync_logs_nonce');
 
-    $logs = get_option('dashd_sync_logs', []);
+    $logs = dashd_data_option('dashd_sync_logs', []);
     if (!is_array($logs) || empty($logs)) {
         wp_die(__('No sync logs available yet.', 'dashd-analytics-pro'));
     }
@@ -274,7 +277,7 @@ add_action('admin_post_dashd_clear_sync_logs', function() {
     }
     check_admin_referer('dashd_clear_sync_logs', 'dashd_clear_sync_logs_nonce');
 
-    update_option('dashd_sync_logs', []);
+    dashd_update_data_option('dashd_sync_logs', []);
     wp_redirect(admin_url('admin.php?page=dashd-settings&tab=logs&status=logs_cleared'));
     exit;
 });

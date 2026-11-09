@@ -10,7 +10,9 @@ if (!function_exists('dashd_api_is_allowed_source')) {
     function dashd_api_public_cache_key($bucket, array $args = []) { return ''; }
 }
 require dirname(__DIR__) . '/includes/date-format.php';
+require dirname(__DIR__) . '/includes/network-storage.php';
 require dirname(__DIR__) . '/includes/services/class-dashd-api-read-service.php';
+add_filter('pre_site_option_dashd_network_storage', static function () { return []; });
 
 global $wpdb;
 $original_prefix = $wpdb->prefix;

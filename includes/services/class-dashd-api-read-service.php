@@ -40,6 +40,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
             $date_format = dashd_last_update_format($date_format !== '' ? $date_format : null);
             $month_case = dashd_last_update_month_case($query['last_update_month_case'] ?? null);
+            $date_timezone = dashd_shared_data_timezone();
 
             $cache_key = function_exists('dashd_api_public_cache_key')
                 ? dashd_api_public_cache_key('modern_data', [
@@ -49,7 +50,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     'month_case' => $month_case,
                     'date_locale' => dashd_date_locale($lang),
                     'request_locale' => get_locale(),
-                    'date_timezone' => wp_timezone_string(),
+                    'date_timezone' => $date_timezone->getName(),
                     'all' => $is_all ? 1 : 0,
                     'year' => $fy,
                     'q' => $fq,
@@ -89,7 +90,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                     : 500;
 
                 $periods_sql = "SELECT DISTINCT r.data_year, r.data_quarter
-                     FROM {$wpdb->prefix}dashd_data_records r
+                     FROM " . dashd_table('data_records') . " r
                      WHERE 1=1";
                 $periods_args = [];
                 if (!empty($indicator_specs)) {
@@ -134,9 +135,9 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
                 $all_sql = "
                     SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, r.val, r.data_year, r.data_quarter, r.record_date
-                    FROM {$wpdb->prefix}dashd_data_records r 
-                    JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id 
-                    JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+                    FROM " . dashd_table('data_records') . " r
+                    JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
+                    JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
                     WHERE 1=1";
                 $all_args = [];
                 if (!empty($indicator_specs)) {
@@ -208,14 +209,14 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 if ($truncated['countries'] || $truncated['indicators']) {
                     $data['truncated'] = $truncated;
                 }
-                $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case);
+                $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case, $date_timezone);
                 self::cache_if_needed($cache_key, $data, 'modern_data');
 
                 return $data;
             }
 
             if (!$fy || empty($fq)) {
-                $last_sql = "SELECT r.data_year, r.data_quarter FROM {$wpdb->prefix}dashd_data_records r WHERE 1=1";
+                $last_sql = "SELECT r.data_year, r.data_quarter FROM " . dashd_table('data_records') . " r WHERE 1=1";
                 $last_args = [];
                 if (!empty($indicator_specs)) {
                     [$indicator_sql, $indicator_args] = self::build_indicator_filter_sql($indicator_specs, 'r', $key);
@@ -255,9 +256,9 @@ if (!class_exists('DashD_Api_Read_Service')) {
 
             $current_sql = "
                 SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val, MAX(r.record_date) as record_date
-                FROM {$wpdb->prefix}dashd_data_records r
-                JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
-                JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+                FROM " . dashd_table('data_records') . " r
+                JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
+                JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
                 WHERE r.data_year=%d AND r.data_quarter IN ({$current_quarter_placeholders})";
             $current_args = array_merge([$fy], $current_quarters);
             if (!empty($indicator_specs)) {
@@ -284,9 +285,9 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $previous_quarter_placeholders = implode(', ', array_fill(0, count($previous_quarters), '%s'));
             $previous_sql = "
                 SELECT COALESCE(NULLIF(i.$col,''), i.name_en) as ind, COALESCE(NULLIF(c.$col,''), c.name_en) as cty, c.flag_url, SUM(r.val) as val
-                FROM {$wpdb->prefix}dashd_data_records r
-                JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
-                JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+                FROM " . dashd_table('data_records') . " r
+                JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
+                JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
                 WHERE r.data_year=%d AND r.data_quarter IN ({$previous_quarter_placeholders})";
             $previous_args = array_merge([$prev_year], $previous_quarters);
             if (!empty($indicator_specs)) {
@@ -364,7 +365,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 $data['truncated'] = $truncated;
             }
 
-            $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case);
+            $data = self::attach_update_dates($data, $update_dates, $date_format, $lang, $month_case, $date_timezone);
             self::cache_if_needed($cache_key, $data, 'modern_data');
 
             return $data;
@@ -413,7 +414,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
                 ? dashd_api_limit_int(apply_filters('dashd_api_periods_max_years', 80, $key), 80, 4, 500)
                 : 80;
             $years_sql = "SELECT DISTINCT r.data_year
-                 FROM {$wpdb->prefix}dashd_data_records r
+                 FROM " . dashd_table('data_records') . " r
                  WHERE 1=1";
             $years_args = [];
             if (!empty($indicator_specs)) {
@@ -437,7 +438,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             $quarters = ['Q4', 'Q3', 'Q2', 'Q1'];
 
             $periods_sql = "SELECT DISTINCT r.data_year, r.data_quarter
-                 FROM {$wpdb->prefix}dashd_data_records r
+                 FROM " . dashd_table('data_records') . " r
                  WHERE 1=1";
             $periods_args = [];
             if (!empty($indicator_specs)) {
@@ -519,17 +520,17 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
         }
 
-        private static function attach_update_dates(array $data, array $dates, $format, $lang, $month_case) {
+        private static function attach_update_dates(array $data, array $dates, $format, $lang, $month_case, $timezone) {
             $latest = $dates ? max($dates) : '';
             $locale = dashd_date_locale($lang);
             $data['last_updated_at'] = $latest;
             // Keep the existing API field for older widget markup and PDF consumers.
-            $data['last_sync'] = dashd_format_update_date($latest, $format, $locale, $month_case);
+            $data['last_sync'] = dashd_format_update_date($latest, $format, $locale, $month_case, $timezone);
             $data['last_updated_by_country'] = [];
             $formatted_dates = [$latest => $data['last_sync']];
             foreach ($dates as $country => $date) {
                 if (!isset($formatted_dates[$date])) {
-                    $formatted_dates[$date] = dashd_format_update_date($date, $format, $locale, $month_case);
+                    $formatted_dates[$date] = dashd_format_update_date($date, $format, $locale, $month_case, $timezone);
                 }
                 $data['last_updated_by_country'][$country] = $formatted_dates[$date];
             }
@@ -842,7 +843,7 @@ if (!class_exists('DashD_Api_Read_Service')) {
             }
 
             $sql = "SELECT DISTINCT r.data_quarter
-                FROM {$wpdb->prefix}dashd_data_records r
+                FROM " . dashd_table('data_records') . " r
                 WHERE r.data_year = %d";
             $args = [$year];
 

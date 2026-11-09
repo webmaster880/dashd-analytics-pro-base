@@ -36,7 +36,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
 
             $rows = $wpdb->get_results($wpdb->prepare(
                 "SELECT id, indicator_id, country_id, data_year, data_quarter, val
-                 FROM {$wpdb->prefix}dashd_data_records
+                 FROM " . dashd_table('data_records') . "
                  WHERE source_key=%s",
                 $this->source_key
             ), ARRAY_A);
@@ -149,7 +149,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
 
             $rows = $wpdb->get_results($wpdb->prepare(
                 "SELECT indicator_id, country_id, val, data_year, data_quarter
-                 FROM {$wpdb->prefix}dashd_data_records
+                 FROM " . dashd_table('data_records') . "
                  WHERE source_key=%s",
                 $this->source_key
             ), ARRAY_A);
@@ -160,7 +160,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
         public function save_snapshot($records_count, $snapshot_dump) {
             global $wpdb;
 
-            return $wpdb->insert("{$wpdb->prefix}dashd_snapshots", [
+            return $wpdb->insert(dashd_table('snapshots'), [
                 'source_key'    => $this->source_key,
                 'sync_date'     => current_time('mysql'),
                 'records_count' => (int) $records_count,
@@ -187,7 +187,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
                     return '';
                 }
                 $updated = $wpdb->update(
-                    "{$wpdb->prefix}dashd_data_records",
+                    dashd_table('data_records'),
                     ['val' => $value, 'record_date' => $this->sync_time],
                     ['id' => (int) $this->source_records_map[$key]]
                 );
@@ -201,7 +201,7 @@ if (!class_exists('DashD_Sync_Source_Record_Store')) {
                 return '';
             }
 
-            $inserted = $wpdb->insert("{$wpdb->prefix}dashd_data_records", [
+            $inserted = $wpdb->insert(dashd_table('data_records'), [
                 'source_key' => $this->source_key,
                 'indicator_id' => $indicator_id,
                 'country_id' => $country_id,

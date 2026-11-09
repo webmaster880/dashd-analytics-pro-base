@@ -8,8 +8,11 @@ if (!defined('ABSPATH')) exit;
 
 function dashd_admin_settings_page() {
     global $wpdb;
-    $sources = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}dashd_settings");
+    $can_manage_data = dashd_can_manage_shared_data();
+    $local_tabs = ['branding', 'leads', 'display'];
     $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'sources';
+    if (!$can_manage_data && !in_array($active_tab, $local_tabs, true)) $active_tab = 'display';
+    $sources = $can_manage_data ? $wpdb->get_results("SELECT * FROM " . dashd_table('settings')) : [];
     $status = isset($_GET['status']) ? sanitize_key($_GET['status']) : '';
     $updates_ttl_hours = (int) get_option('dashd_github_updater_cache_ttl_hours', 12);
     if ($updates_ttl_hours < 12 || $updates_ttl_hours > 24) {
@@ -70,6 +73,9 @@ function dashd_admin_settings_page() {
         <?php if ($status === 'synced'): ?>
             <div class="notice notice-success is-dismissible"><p>✅ <strong><?php esc_html_e('Synchronization complete.', 'dashd-analytics-pro'); ?></strong> <?php esc_html_e('All data is up to date.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
+        <?php if ($status === 'sync_busy'): ?>
+            <div class="notice notice-warning"><p><?php esc_html_e('Network synchronization is already running or could not acquire its lock.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
         <?php if ($status === 'cron_saved'): ?>
             <div class="notice notice-success is-dismissible"><p>⏱️ <strong><?php esc_html_e('Schedule updated.', 'dashd-analytics-pro'); ?></strong></p></div>
         <?php endif; ?>
@@ -114,14 +120,21 @@ function dashd_admin_settings_page() {
             <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Failed to save date format. Please try again.', 'dashd-analytics-pro'); ?></p></div>
         <?php endif; ?>
 
+        <?php if (dashd_network_owner_id()): ?>
+            <div class="notice notice-info inline"><p><?php esc_html_e('Charts use the shared network data. A network administrator manages sources and synchronization on the designated data site.', 'dashd-analytics-pro'); ?></p></div>
+        <?php endif; ?>
         <h2 class="nav-tab-wrapper">
+            <?php if ($can_manage_data): ?>
             <a href="?page=dashd-settings&tab=sources" class="nav-tab <?php echo $active_tab == 'sources' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Data Sources & Raw Data', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=countries" class="nav-tab <?php echo $active_tab == 'countries' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Countries Translation', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=indicators" class="nav-tab <?php echo $active_tab == 'indicators' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Indicators Translation', 'dashd-analytics-pro'); ?></a>
+            <?php endif; ?>
             <a href="?page=dashd-settings&tab=branding" class="nav-tab <?php echo $active_tab == 'branding' ? 'nav-tab-active' : ''; ?>" style="color:#1e87f0;"><?php esc_html_e('PDF Branding 🎨', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=leads" class="nav-tab <?php echo $active_tab == 'leads' ? 'nav-tab-active' : ''; ?>" style="color:#10b981;"><?php esc_html_e('Leads (Emails) 📩', 'dashd-analytics-pro'); ?></a>
             <a href="?page=dashd-settings&tab=display" class="nav-tab <?php echo $active_tab == 'display' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Display', 'dashd-analytics-pro'); ?></a>
-            <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
+            <?php if ($can_manage_data): ?>
+                <a href="?page=dashd-settings&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e('Logs', 'dashd-analytics-pro'); ?></a>
+            <?php endif; ?>
         </h2>
 
         <?php if (!in_array($active_tab, ['branding', 'leads', 'display', 'logs'], true)): ?>
@@ -543,42 +556,42 @@ function dashd_render_sources_tab($sources) {
         $raw_where_sql .= ' AND r.val < 0';
     }
 
-    $total_items = $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM {$wpdb->prefix}dashd_data_records r WHERE {$raw_where_sql}", ...$raw_where_args));
-    $negative_items = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM {$wpdb->prefix}dashd_data_records r WHERE r.source_key=%s AND r.val < 0", $src_filter));
+    $total_items = $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM " . dashd_table('data_records') . " r WHERE {$raw_where_sql}", ...$raw_where_args));
+    $negative_items = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(r.id) FROM " . dashd_table('data_records') . " r WHERE r.source_key=%s AND r.val < 0", $src_filter));
     $total_pages = ceil($total_items / $per_page);
 
     $records_args = array_merge($raw_where_args, [$offset, $per_page]);
     $records = $wpdb->get_results($wpdb->prepare("
-        SELECT r.*, i.name_en as ind, c.name_en as cty FROM {$wpdb->prefix}dashd_data_records r 
-        JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id=i.id 
-        JOIN {$wpdb->prefix}dashd_countries c ON r.country_id=c.id 
+        SELECT r.*, i.name_en as ind, c.name_en as cty FROM " . dashd_table('data_records') . " r
+        JOIN " . dashd_table('indicators') . " i ON r.indicator_id=i.id
+        JOIN " . dashd_table('countries') . " c ON r.country_id=c.id
         WHERE {$raw_where_sql} ORDER BY $order_sql LIMIT %d, %d", ...$records_args));
 
     $indicator_rows = $wpdb->get_results($wpdb->prepare(
         "SELECT DISTINCT i.id, i.name_en
-         FROM {$wpdb->prefix}dashd_data_records r
-         JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
+         FROM " . dashd_table('data_records') . " r
+         JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
          WHERE r.source_key = %s
          ORDER BY COALESCE(i.sort_order, 0) ASC, i.name_en ASC",
         $src_filter
     ));
     if (empty($indicator_rows)) {
         $indicator_rows = $wpdb->get_results(
-            "SELECT id, name_en FROM {$wpdb->prefix}dashd_indicators ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
+            "SELECT id, name_en FROM " . dashd_table('indicators') . " ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
         );
     }
 
     $country_rows = $wpdb->get_results($wpdb->prepare(
         "SELECT DISTINCT c.id, c.name_en
-         FROM {$wpdb->prefix}dashd_data_records r
-         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+         FROM " . dashd_table('data_records') . " r
+         JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
          WHERE r.source_key = %s
          ORDER BY COALESCE(c.sort_order, 0) ASC, c.name_en ASC",
         $src_filter
     ));
     if (empty($country_rows)) {
         $country_rows = $wpdb->get_results(
-            "SELECT id, name_en FROM {$wpdb->prefix}dashd_countries ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
+            "SELECT id, name_en FROM " . dashd_table('countries') . " ORDER BY COALESCE(sort_order, 0) ASC, name_en ASC"
         );
     }
 
@@ -1319,11 +1332,12 @@ function dashd_render_sources_tab($sources) {
 
 function dashd_render_lang_table($table_suffix, $title) {
     global $wpdb;
-    $table = $wpdb->prefix . $table_suffix;
+    dashd_require_shared_data_access();
+    $table = dashd_table(substr($table_suffix, 6));
     $is_indicator = ($table_suffix === 'dashd_indicators');
     $is_country = ($table_suffix === 'dashd_countries');
 
-    $all_sources = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings");
+    $all_sources = $wpdb->get_results("SELECT source_key, source_label FROM " . dashd_table('settings'));
     $allowed_target_sources = ['all' => true];
     if (is_array($all_sources)) {
         foreach ($all_sources as $src_item) {
@@ -1340,8 +1354,8 @@ function dashd_render_lang_table($table_suffix, $title) {
         check_admin_referer('dashd_lang_table_action', 'dashd_lang_table_nonce');
         $del_id = (int)$_POST['delete_item'];
         $wpdb->delete($table, ['id' => $del_id]);
-        if ($is_indicator) $wpdb->delete("{$wpdb->prefix}dashd_data_records", ['indicator_id' => $del_id]);
-        else $wpdb->delete("{$wpdb->prefix}dashd_data_records", ['country_id' => $del_id]);
+        if ($is_indicator) $wpdb->delete(dashd_table('data_records'), ['indicator_id' => $del_id]);
+        else $wpdb->delete(dashd_table('data_records'), ['country_id' => $del_id]);
         if (function_exists('dashd_clear_all_caches')) dashd_clear_all_caches();
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Item and ALL its data were permanently deleted.', 'dashd-analytics-pro') . '</p></div>';
     }
@@ -1419,9 +1433,9 @@ function dashd_render_lang_table($table_suffix, $title) {
 
                 if ($was_calc == 1) {
                     if ($is_calc_now == 0 || empty($formula_now)) {
-                        $wpdb->delete("{$wpdb->prefix}dashd_data_records", ['indicator_id' => (int)$id]);
+                        $wpdb->delete(dashd_table('data_records'), ['indicator_id' => (int)$id]);
                     } elseif ($source_now !== 'all' && $source_now !== $old_source) {
-                        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}dashd_data_records WHERE indicator_id = %d AND source_key != %s", $id, $source_now));
+                        $wpdb->query($wpdb->prepare("DELETE FROM " . dashd_table('data_records') . " WHERE indicator_id = %d AND source_key != %s", $id, $source_now));
                     }
                 }
             }
@@ -1778,7 +1792,7 @@ add_action('admin_post_dashd_add_source', function() {
         exit;
     }
 
-    $inserted = $wpdb->insert("{$wpdb->prefix}dashd_settings", [
+    $inserted = $wpdb->insert(dashd_table('settings'), [
         'source_key'   => $source_key,
         'source_type'  => $source_type,
         'source_label' => $source_label,
@@ -1809,7 +1823,7 @@ add_action('admin_post_dashd_delete_source', function() {
     $source_id = intval($_POST['id'] ?? 0);
     check_admin_referer('dashd_delete_source_' . $source_id, 'dashd_delete_source_nonce');
     global $wpdb;
-    $wpdb->delete("{$wpdb->prefix}dashd_settings", ['id' => intval($_POST['id'])]);
+    $wpdb->delete(dashd_table('settings'), ['id' => intval($_POST['id'])]);
     if (function_exists('dashd_clear_all_caches')) dashd_clear_all_caches();
     wp_redirect(admin_url("admin.php?page=dashd-settings&tab=sources"));
     exit;
@@ -1864,7 +1878,7 @@ add_action('admin_post_dashd_update_source', function() {
         return add_query_arg($args, admin_url('admin.php'));
     };
 
-    $existing = $wpdb->get_row($wpdb->prepare("SELECT id, source_key FROM {$wpdb->prefix}dashd_settings WHERE id = %d", $source_id));
+    $existing = $wpdb->get_row($wpdb->prepare("SELECT id, source_key FROM " . dashd_table('settings') . " WHERE id = %d", $source_id));
     if (!$existing || empty($existing->id)) {
         wp_redirect($build_return_url('source_not_found'));
         exit;
@@ -1888,7 +1902,7 @@ add_action('admin_post_dashd_update_source', function() {
     }
 
     $updated = $wpdb->update(
-        "{$wpdb->prefix}dashd_settings",
+        dashd_table('settings'),
         [
             'source_type' => $source_type,
             'source_label' => $source_label,
@@ -1966,14 +1980,14 @@ function dashd_handle_update_raw_value() {
     }
     
     $current_val = $wpdb->get_var($wpdb->prepare(
-        "SELECT val FROM {$wpdb->prefix}dashd_data_records WHERE id=%d",
+        "SELECT val FROM " . dashd_table('data_records') . " WHERE id=%d",
         $id
     ));
     if ($current_val === null) {
         wp_send_json_error(['msg' => __('Raw data record not found.', 'dashd-analytics-pro')]);
     }
     $updated = (float) $current_val === $val ? 0 : $wpdb->update(
-        "{$wpdb->prefix}dashd_data_records",
+        dashd_table('data_records'),
         ['val' => $val, 'record_date' => current_time('mysql')],
         ['id' => $id]
     );
@@ -2022,7 +2036,7 @@ function dashd_handle_delete_raw_records() {
     }
 
     $placeholders = implode(',', array_fill(0, count($ids), '%d'));
-    $sql = "DELETE FROM {$wpdb->prefix}dashd_data_records WHERE id IN ($placeholders)";
+    $sql = "DELETE FROM " . dashd_table('data_records') . " WHERE id IN ($placeholders)";
     $deleted = $wpdb->query($wpdb->prepare($sql, ...$ids));
 
     if ($deleted === false) {
@@ -2062,7 +2076,7 @@ function dashd_handle_add_raw_record() {
     }
 
     $source_exists = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_settings WHERE source_key = %s",
+        "SELECT COUNT(*) FROM " . dashd_table('settings') . " WHERE source_key = %s",
         $source_key
     ));
     if ($source_exists < 1) {
@@ -2103,11 +2117,11 @@ function dashd_handle_add_raw_record() {
     }
 
     $indicator_exists = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_indicators WHERE id = %d",
+        "SELECT COUNT(*) FROM " . dashd_table('indicators') . " WHERE id = %d",
         $indicator_id
     ));
     $country_exists = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}dashd_countries WHERE id = %d",
+        "SELECT COUNT(*) FROM " . dashd_table('countries') . " WHERE id = %d",
         $country_id
     ));
     if ($indicator_exists < 1 || $country_exists < 1) {
@@ -2115,7 +2129,7 @@ function dashd_handle_add_raw_record() {
     }
 
     $existing_record = $wpdb->get_row($wpdb->prepare(
-        "SELECT id, val FROM {$wpdb->prefix}dashd_data_records
+        "SELECT id, val FROM " . dashd_table('data_records') . "
          WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s
          LIMIT 1",
         $source_key,
@@ -2134,7 +2148,7 @@ function dashd_handle_add_raw_record() {
             $mode = 'unchanged';
         } else {
             $result = $wpdb->update(
-                "{$wpdb->prefix}dashd_data_records",
+                dashd_table('data_records'),
                 ['val' => $val, 'record_date' => current_time('mysql')],
                 ['id' => $existing_id]
             );
@@ -2142,7 +2156,7 @@ function dashd_handle_add_raw_record() {
         }
     } else {
         $result = $wpdb->insert(
-            "{$wpdb->prefix}dashd_data_records",
+            dashd_table('data_records'),
             [
                 'source_key' => $source_key,
                 'indicator_id' => $indicator_id,
@@ -2167,9 +2181,9 @@ function dashd_handle_add_raw_record() {
     $saved_id = $existing_id > 0 ? $existing_id : (int) $wpdb->insert_id;
     $row = $wpdb->get_row($wpdb->prepare(
         "SELECT r.id, r.data_year, r.data_quarter, r.val, i.name_en AS ind, c.name_en AS cty
-         FROM {$wpdb->prefix}dashd_data_records r
-         JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
-         JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+         FROM " . dashd_table('data_records') . " r
+         JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
+         JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
          WHERE r.id = %d
          LIMIT 1",
         $saved_id
@@ -2211,9 +2225,9 @@ function dashd_handle_export_csv() {
     global $wpdb;
     
     $tab = sanitize_key($_POST['tab'] ?? 'sources');
-    if ($tab === 'countries') $table = "{$wpdb->prefix}dashd_countries";
-    elseif ($tab === 'indicators') $table = "{$wpdb->prefix}dashd_indicators";
-    else $table = "{$wpdb->prefix}dashd_settings";
+    if ($tab === 'countries') $table = dashd_table('countries');
+    elseif ($tab === 'indicators') $table = dashd_table('indicators');
+    else $table = dashd_table('settings');
 
     $results = $wpdb->get_results("SELECT * FROM $table", ARRAY_A);
     if (empty($results)) wp_die(__('No data to export in this tab.', 'dashd-analytics-pro'));
@@ -2248,18 +2262,18 @@ function dashd_handle_import_csv() {
 
     $tab = sanitize_key($_POST['tab'] ?? 'sources');
     if ($tab === 'countries') {
-        $table = "{$wpdb->prefix}dashd_countries";
+        $table = dashd_table('countries');
         $unique_key = 'name_en';
     } elseif ($tab === 'indicators') {
-        $table = "{$wpdb->prefix}dashd_indicators";
+        $table = dashd_table('indicators');
         $unique_key = 'name_en';
     } else {
-        $table = "{$wpdb->prefix}dashd_settings";
+        $table = dashd_table('settings');
         $unique_key = 'source_key';
     }
 
     $known_sources = ['all' => true];
-    $source_rows = $wpdb->get_col("SELECT source_key FROM {$wpdb->prefix}dashd_settings");
+    $source_rows = $wpdb->get_col("SELECT source_key FROM " . dashd_table('settings'));
     if (is_array($source_rows)) {
         foreach ($source_rows as $src_key) {
             $normalized_key = function_exists('dashd_normalize_source_key')
@@ -2314,7 +2328,7 @@ function dashd_handle_import_csv() {
         $update_data = [];
 
         // Harden imported source settings.
-        if ($table === "{$wpdb->prefix}dashd_settings") {
+        if ($table === dashd_table('settings')) {
             $source_key = function_exists('dashd_normalize_source_key')
                 ? dashd_normalize_source_key((string) ($row['source_key'] ?? $key_value))
                 : sanitize_key((string) ($row['source_key'] ?? $key_value));
@@ -2337,7 +2351,7 @@ function dashd_handle_import_csv() {
                 'api_method'   => $api_method,
                 'api_headers'  => $api_headers
             ];
-        } elseif ($table === "{$wpdb->prefix}dashd_indicators") {
+        } elseif ($table === dashd_table('indicators')) {
             $name_en = dashd_admin_limit_text((string) ($row['name_en'] ?? $key_value), 255);
             if ($name_en === '') {
                 continue;
@@ -2432,9 +2446,9 @@ function dashd_handle_export_raw_data() {
 
     $results = $wpdb->get_results("
         SELECT r.source_key, i.name_en as indicator, c.name_en as country, r.val, r.data_year, r.data_quarter, r.record_date
-        FROM {$wpdb->prefix}dashd_data_records r
-        JOIN {$wpdb->prefix}dashd_indicators i ON r.indicator_id = i.id
-        JOIN {$wpdb->prefix}dashd_countries c ON r.country_id = c.id
+        FROM " . dashd_table('data_records') . " r
+        JOIN " . dashd_table('indicators') . " i ON r.indicator_id = i.id
+        JOIN " . dashd_table('countries') . " c ON r.country_id = c.id
         ORDER BY r.data_year DESC, r.data_quarter DESC, i.name_en ASC
     ", ARRAY_A);
 
@@ -2547,11 +2561,11 @@ function dashd_handle_import_raw_data() {
             $iid = (int) $dictionary_service->get_indicator_id($ind_name);
             $cid = (int) $dictionary_service->get_country_id($cty_name);
         } else {
-            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}dashd_indicators (name_en) VALUES (%s)", $ind_name));
-            $iid = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}dashd_indicators WHERE name_en = %s", $ind_name));
+            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO " . dashd_table('indicators') . " (name_en) VALUES (%s)", $ind_name));
+            $iid = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . dashd_table('indicators') . " WHERE name_en = %s", $ind_name));
 
-            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}dashd_countries (name_en) VALUES (%s)", $cty_name));
-            $cid = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}dashd_countries WHERE name_en = %s", $cty_name));
+            $wpdb->query($wpdb->prepare("INSERT IGNORE INTO " . dashd_table('countries') . " (name_en) VALUES (%s)", $cty_name));
+            $cid = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . dashd_table('countries') . " WHERE name_en = %s", $cty_name));
         }
 
         if ($iid <= 0 || $cid <= 0) {
@@ -2571,7 +2585,7 @@ function dashd_handle_import_raw_data() {
         }
 
         $existing_record = $wpdb->get_row($wpdb->prepare(
-            "SELECT id, val FROM {$wpdb->prefix}dashd_data_records WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s",
+            "SELECT id, val FROM " . dashd_table('data_records') . " WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s",
             $source_key, $iid, $cid, $year, $quarter
         ));
 
@@ -2580,7 +2594,7 @@ function dashd_handle_import_raw_data() {
                 continue;
             }
             $updated = $wpdb->update(
-                "{$wpdb->prefix}dashd_data_records",
+                dashd_table('data_records'),
                 ['val' => $val, 'record_date' => $sync_date],
                 ['id' => (int) $existing_record->id]
             );
@@ -2588,7 +2602,7 @@ function dashd_handle_import_raw_data() {
                 $imported_count++;
             }
         } else {
-            $inserted = $wpdb->insert("{$wpdb->prefix}dashd_data_records", [
+            $inserted = $wpdb->insert(dashd_table('data_records'), [
                 'source_key' => $source_key, 'indicator_id' => $iid, 'country_id' => $cid,
                 'val' => $val, 'data_year' => $year, 'data_quarter' => $quarter, 'record_date' => $sync_date
             ]);

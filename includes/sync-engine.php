@@ -29,8 +29,22 @@ if (!function_exists('dashd_sync_normalize_quarter')) {
 }
 
 function dashd_sync_repository($manual = false) {
+    if (!dashd_network_owner_id()) {
+        dashd_sync_repository_run($manual);
+        return true;
+    }
+    if (!dashd_is_data_owner_site() || !dashd_network_sync_lock()) return false;
+    try {
+        dashd_sync_repository_run($manual);
+        return true;
+    } finally {
+        dashd_network_sync_unlock();
+    }
+}
+
+function dashd_sync_repository_run($manual) {
     global $wpdb;
-    $sources = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}dashd_settings");
+    $sources = $wpdb->get_results("SELECT * FROM " . dashd_table('settings'));
     $sync_time = current_time('mysql');
     $log = "";
     $total_added = 0;
@@ -107,7 +121,7 @@ function dashd_sync_repository($manual = false) {
         }
 
         $val = $wpdb->get_var($wpdb->prepare(
-            "SELECT val FROM {$wpdb->prefix}dashd_data_records
+            "SELECT val FROM " . dashd_table('data_records') . "
              WHERE source_key=%s AND indicator_id=%d AND country_id=%d AND data_year=%d AND data_quarter=%s
              LIMIT 1",
             $source_key,
@@ -415,20 +429,20 @@ function dashd_sync_repository($manual = false) {
         $log .= "\n⚠️ Detected Anomalies (>300%):\n" . implode("\n", array_slice($anomalies, 0, 5));
         if (count($anomalies) > 5) $log .= "\n... and " . (count($anomalies) - 5) . " more.";
         if ($skipped_anomalies > 0) $log .= "\n... and {$skipped_anomalies} more anomalies were not stored in memory.";
-        if (function_exists('dashd_send_anomaly_alert')) dashd_send_anomaly_alert($anomalies);
+        if (dashd_sync_notifications_enabled() && function_exists('dashd_send_anomaly_alert')) dashd_send_anomaly_alert($anomalies);
     }
 
     $status = 'Success';
     if (strpos($log, '❌') !== false) $status = 'Error';
     elseif ($total_added == 0 && $total_updated == 0) $status = 'No Changes';
 
-    $logs = get_option('dashd_sync_logs', []);
+    $logs = dashd_data_option('dashd_sync_logs', []);
     array_unshift($logs, ['time' => current_time('mysql'), 'status' => $status, 'added' => $total_added, 'updated' => $total_updated, 'log' => $log]);
-    update_option('dashd_sync_logs', array_slice($logs, 0, 15)); 
-    update_option('dashd_last_global_sync', current_time('mysql'));
+    dashd_update_data_option('dashd_sync_logs', array_slice($logs, 0, 15));
+    dashd_update_data_option('dashd_last_global_sync', current_time('mysql'));
 
     dashd_clear_all_caches();
-    dashd_notify("Sync Results:\nNew: $total_added\nUpdated: $total_updated\n\n$log");
+    if (dashd_sync_notifications_enabled()) dashd_notify("Sync Results:\nNew: $total_added\nUpdated: $total_updated\n\n$log");
 }
 
 // =========================================================
@@ -465,7 +479,7 @@ function dashd_process_calculated_indicators($sync_time) {
     );
 
     // Получаем все активные таблицы
-    $active_sources_raw = $wpdb->get_col("SELECT source_key FROM {$wpdb->prefix}dashd_settings");
+    $active_sources_raw = $wpdb->get_col("SELECT source_key FROM " . dashd_table('settings'));
     $active_source_map = [];
     if (is_array($active_sources_raw)) {
         foreach ($active_sources_raw as $source_key) {
@@ -487,7 +501,7 @@ function dashd_process_calculated_indicators($sync_time) {
 
     $calc_inds = $wpdb->get_results($wpdb->prepare(
         "SELECT id, formula, target_source
-         FROM {$wpdb->prefix}dashd_indicators
+         FROM " . dashd_table('indicators') . "
          WHERE is_calculated = 1
          ORDER BY id ASC
          LIMIT %d",
@@ -498,7 +512,7 @@ function dashd_process_calculated_indicators($sync_time) {
     // Берем абсолютно все комбинации Год+Квартал+Страна, которые есть в БД
     $periods = $wpdb->get_results($wpdb->prepare(
         "SELECT DISTINCT data_year, data_quarter, country_id
-         FROM {$wpdb->prefix}dashd_data_records
+         FROM " . dashd_table('data_records') . "
          ORDER BY data_year DESC, data_quarter DESC, country_id ASC
          LIMIT %d",
         $max_calc_periods
@@ -643,7 +657,7 @@ function dashd_process_calculated_indicators($sync_time) {
         $value_args = array_merge($required_indicators, $required_countries);
 
         $values_sql = "SELECT indicator_id, country_id, data_year, data_quarter, SUM(val) AS val
-                       FROM {$wpdb->prefix}dashd_data_records
+                       FROM " . dashd_table('data_records') . "
                        WHERE indicator_id IN ({$ind_placeholders})
                          AND country_id IN ({$cty_placeholders})
                        GROUP BY indicator_id, country_id, data_year, data_quarter";
@@ -676,7 +690,7 @@ function dashd_process_calculated_indicators($sync_time) {
         if (!empty($target_sources)) {
             $src_placeholders = implode(',', array_fill(0, count($target_sources), '%s'));
             $existing_sql = "SELECT id, source_key, country_id, data_year, data_quarter, val
-                             FROM {$wpdb->prefix}dashd_data_records
+                             FROM " . dashd_table('data_records') . "
                              WHERE indicator_id = %d
                                AND source_key IN ({$src_placeholders})";
             $existing_args = array_merge([(int) $ci->id], $target_sources);
@@ -740,13 +754,13 @@ function dashd_process_calculated_indicators($sync_time) {
                     if (abs($existing_val - (float) $result_val) < 0.0000001) {
                         continue;
                     }
-                    $updated = $wpdb->update("{$wpdb->prefix}dashd_data_records", ['val' => $result_val, 'record_date' => $sync_time], ['id' => $existing_id]);
+                    $updated = $wpdb->update(dashd_table('data_records'), ['val' => $result_val, 'record_date' => $sync_time], ['id' => $existing_id]);
                     if ($updated > 0) {
                         $existing_map[$row_key]['val'] = (float) $result_val;
                         $changes['updated']++;
                     }
                 } else {
-                    $wpdb->insert("{$wpdb->prefix}dashd_data_records", [
+                    $wpdb->insert(dashd_table('data_records'), [
                         'source_key' => $t_source, 'indicator_id' => $ci->id, 'country_id' => $p->country_id,
                         'val' => $result_val, 'data_year' => $p->data_year, 'data_quarter' => $p->data_quarter, 'record_date' => $sync_time
                     ]);

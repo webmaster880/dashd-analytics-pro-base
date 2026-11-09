@@ -20,7 +20,7 @@ if (!function_exists('dashd_integration_get_source_options')) {
         }
 
         $cached = [];
-        $rows = $wpdb->get_results("SELECT source_key, source_label FROM {$wpdb->prefix}dashd_settings");
+        $rows = $wpdb->get_results("SELECT source_key, source_label FROM " . dashd_table('settings'));
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 $raw_key = (string) ($row->source_key ?? '');
