@@ -2,11 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
-## [11.9.25-stage.1] - 2026-11-09
+## [11.10.0] - 2026-11-09
 
-- Added opt-in network storage for analytical data with a WP-CLI plan, copy, enable, and rollback flow. Stage uses Ukraine as the authoritative source; local tables and saved indicator IDs are preserved.
-- Restricted shared data administration to network administrators on the owner site. Shared synchronization runs only on the owner with a database lock, network logs and cache revision; stage sync and notifications start disabled.
+- Added opt-in network storage for analytical data with a WP-CLI plan, copy, enable, and rollback flow. The authoritative site supplies the shared data; local tables and saved indicator IDs are preserved.
+- Restricted shared data administration to network administrators on the owner site. Shared synchronization runs only on the owner with a database lock, network logs and cache revision; sync and notifications start disabled until the rollout is verified.
 - Kept lead data, presentation settings, and widget configuration local. Shared record dates use the owner's timezone.
+- Promoted the Multisite build verified on stage to the production release.
 
 ## [11.9.24] - 2026-10-25
 

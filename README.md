@@ -4,8 +4,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ## Version Info
 
-- Stable version: `11.9.24`
-- Multisite stage build (separate branch): `11.9.25-stage.1`
+- Stable version: `11.10.0`
 - Plugin file: `dashd-analytics-pro.php`
 - PHP: `7.4+`
 - WordPress: `6.4+`
@@ -24,7 +23,7 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 
 ---
 
-## Общие данные в Multisite (stage)
+## Общие данные в Multisite
 
 По умолчанию плагин использует локальные таблицы сайта. В сетевом режиме пять таблиц
 аналитики (источники, страны, показатели, записи и снимки) находятся под отдельным
@@ -33,12 +32,14 @@ DashD Analytics Pro Engine — WordPress-плагин для импорта, н�
 Источники, словари, сырые данные и синхронизацию настраивает администратор сети
 в Analytics Pro на выбранном сайте-владельце. Массовая очистка в сетевом режиме отключена.
 
-Команды выполняются через WP-CLI на stage с активным плагином, например для Ukraine (ID 2):
+Команды выполняются через WP-CLI на выбранной установке Multisite с активным плагином,
+например для Ukraine (ID 2). Перед переключением сделайте резервную копию БД и плагина:
 
 ```sh
 wp eval-file wp-content/plugins/dashd-analytics-pro/bin/network-storage.php plan 2
 wp eval-file wp-content/plugins/dashd-analytics-pro/bin/network-storage.php prepare 2
 wp eval-file wp-content/plugins/dashd-analytics-pro/bin/network-storage.php enable 2
+wp plugin activate dashd-analytics-pro --network
 wp eval-file wp-content/plugins/dashd-analytics-pro/bin/smoke-network-storage.php seed
 ```
 
@@ -50,6 +51,9 @@ wp eval-file wp-content/plugins/dashd-analytics-pro/bin/smoke-network-storage.ph
 согласовать отдельно до включения режима.
 
 После подготовки автосинхронизация и уведомления синхронизации выключены.
+После проверки включите прежнее расписание владельца в Settings → Data Sources & Raw Data.
+Уведомления общего импорта используют настройки сайта-владельца и включаются сетевой
+опцией `dashd_network_sync_notifications` со значением `1`.
 Планировщик запускает синхронизацию только на владельце; блокировка БД исключает
 одновременный автоматический и ручной запуск. Кеш данных сбрасывается для всей сети.
 Даты общего набора интерпретируются в часовом поясе владельца.
@@ -529,7 +533,7 @@ Full changelog is maintained in:
 
 - `CHANGELOG.md`
 
-Latest release: `11.9.24`
+Latest release: `11.10.0`
 ---
 
 ## Notes
